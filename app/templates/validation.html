@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}验证 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>验证</h2>
+    <p>验证转换后的脚本正确性，确保转换结果符合预期。</p>
+</div>
+
+<div class="content-section">
+    <div class="two-column-layout">
+        <div class="column">
+            <h3>原始脚本</h3>
+            <div class="code-editor-placeholder">
+                <textarea class="code-textarea" placeholder="请输入或粘贴原始 SQL 脚本..."></textarea>
+            </div>
+        </div>
+        
+        <div class="column">
+            <h3>转换后脚本</h3>
+            <div class="code-editor-placeholder">
+                <textarea class="code-textarea" placeholder="请输入或粘贴转换后的 SQL 脚本..."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <div class="validation-actions">
+        <button class="btn btn-primary btn-large">执行验证</button>
+        <button class="btn btn-secondary">选择历史任务</button>
+    </div>
+</div>
+
+<div class="validation-result-section" style="display: none;">
+    <h3>验证结果</h3>
+    <div class="result-summary">
+        <div class="result-item">
+            <span class="result-icon success">✓</span>
+            <span>语法检查: 通过</span>
+        </div>
+        <div class="result-item">
+            <span class="result-icon warning">⚠</span>
+            <span>逻辑检查: 存在差异 (需要手动确认)</span>
+        </div>
+        <div class="result-item">
+            <span class="result-icon info">ℹ</span>
+            <span>性能分析: 转换后脚本性能相当</span>
+        </div>
+    </div>
+    
+    <div class="result-details">
+        <h4>详细差异</h4>
+        <div class="diff-view">
+            <p>差异对比将显示在这里...</p>
+        </div>
+    </div>
+</div>
+
+<div class="validation-options">
+    <h3>验证选项</h3>
+    <div class="options-grid">
+        <div class="option-item">
+            <label>
+                <input type="checkbox" checked> 语法验证
+            </label>
+        </div>
+        <div class="option-item">
+            <label>
+                <input type="checkbox" checked> 逻辑等价性验证
+            </label>
+        </div>
+        <div class="option-item">
+            <label>
+                <input type="checkbox"> 性能对比分析
+            </label>
+        </div>
+        <div class="option-item">
+            <label>
+                <input type="checkbox" checked> 生成验证报告
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="history-section">
+    <h3>验证历史</h3>
+    <div class="placeholder-message">
+        <p>验证历史记录将显示在这里...</p>
+        <p class="placeholder-note">功能开发中</p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}匿名化 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>匿名化处理</h2>
+    <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+</div>
+
+<div class="content-section">
+    <div class="two-column-layout">
+        <div class="column">
+            <h3>原始脚本</h3>
+            <div class="code-editor-placeholder">
+                <textarea class="code-textarea" placeholder="请输入或粘贴需要匿名化的 SQL 脚本..."></textarea>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary">执行匿名化</button>
+                <button class="btn btn-secondary">清空</button>
+            </div>
+        </div>
+        
+        <div class="column">
+            <h3>匿名化结果</h3>
+            <div class="code-result-placeholder">
+                <pre class="code-result">匿名化处理后的脚本将显示在这里...</pre>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary">复制结果</button>
+                <button class="btn btn-secondary">下载</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>匿名化设置</h3>
+    <div class="settings-grid">
+        <div class="setting-item">
+            <label>
+                <input type="checkbox" checked> 隐藏表名和字段名
+            </label>
+        </div>
+        <div class="setting-item">
+            <label>
+                <input type="checkbox" checked> 隐藏敏感数据值
+            </label>
+        </div>
+        <div class="setting-item">
+            <label>
+                <input type="checkbox"> 保留注释
+            </label>
+        </div>
+        <div class="setting-item">
+            <label>
+                <input type="checkbox"> 生成替换映射表
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="history-section">
+    <h3>历史记录</h3>
+    <div class="placeholder-message">
+        <p>匿名化历史记录将显示在这里...</p>
+        <p class="placeholder-note">功能开发中</p>
+    </div>
+</div>
+{% endblock %}

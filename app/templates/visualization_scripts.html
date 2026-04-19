@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}可视化脚本 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>可视化脚本管理</h2>
+    <p>管理和查看可视化脚本，包括脚本的导入、编辑和删除。</p>
+</div>
+
+<div class="action-bar">
+    <button class="btn btn-primary">新建脚本</button>
+    <button class="btn btn-secondary">导入脚本</button>
+    <button class="btn btn-secondary">批量操作</button>
+</div>
+
+<div class="content-section">
+    <div class="placeholder-message">
+        <div class="placeholder-icon">📊</div>
+        <h3>可视化脚本管理</h3>
+        <p>此页面用于管理可视化脚本，您可以：</p>
+        <ul>
+            <li>创建新的可视化脚本</li>
+            <li>导入已有的可视化脚本</li>
+            <li>查看和编辑脚本内容</li>
+            <li>管理脚本与中间表的关联关系</li>
+        </ul>
+        <p class="placeholder-note">功能开发中，敬请期待...</p>
+    </div>
+</div>
+
+<div class="tabs-section">
+    <div class="tabs">
+        <button class="tab-btn active">脚本列表</button>
+        <button class="tab-btn">中间表关联</button>
+        <button class="tab-btn">历史记录</button>
+    </div>
+    <div class="tab-content">
+        <p>脚本列表内容区域</p>
+    </div>
+</div>
+{% endblock %}
