@@ -77,29 +77,65 @@ sql_transfer/
 
 本项目采用 SQLite 作为数据库，设计思路如下：
 
-1. **分层设计**：
-   - 任务层（tasks）：作为顶层容器，统一管理一组相关的脚本转换工作
-   - 业务数据层（intermediate_scripts, visualization_scripts）：存储核心业务数据
-   - 配置层（configs）：存储系统配置，包括 LLM 访问配置等
+#### 1. 分层设计
 
-2. **关系设计**：
-   - 任务与脚本：一对多关系（一个任务包含多个中间表脚本和多个可视化脚本）
-   - 脚本关联：可视化脚本通过 `intermediate_table_names` 字段（逗号分隔）关联一个或多个中间表名
+- **任务层（tasks）**：针对可视化脚本的转换工作容器，只与可视化脚本相关
+- **业务数据层**：
+  - `intermediate_scripts`（中间表脚本）：底层逻辑，独立存在，与任务无关
+  - `visualization_scripts`（可视化脚本）：属于任务，通过字段关联中间表
+- **配置层（configs）**：存储系统配置，包括 LLM 访问配置等
 
-3. **约束设计**：
-   - 唯一约束：同一任务下，中间表名和可视化脚本名必须唯一
-   - 外键约束：确保数据完整性，级联删除
+#### 2. 表关系设计
 
-4. **配置存储**：
-   - 采用键值对方式存储配置，灵活支持后续新增配置项
-   - 支持配置分类和敏感配置标记
-   - 敏感配置（如 API Key）在存储时可以加密（当前版本明文存储，后续可增强）
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         表关系图                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   tasks (任务表)                                                │
+│       │                                                         │
+│       └──►  visualization_scripts (可视化脚本表)               │
+│                      │                                          │
+│                      └──►  (通过 intermediate_table_names 字段) │
+│                                    │                             │
+│                                    ▼                             │
+│   intermediate_scripts (中间脚本表) ◄──────────────────────────│
+│   (独立存在，与任务无关)                                         │
+│                                                                 │
+│   configs (配置表)                                              │
+│   (独立存在)                                                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 3. 关键设计决策
+
+| 决策 | 说明 |
+|------|------|
+| **Task 只与 VisualizationScript 关联** | 任务是针对可视化脚本的转换工作，与中间表无关 |
+| **IntermediateScript 独立存在** | 中间表是底层逻辑，可以被多个可视化脚本复用，不依赖任务 |
+| **删除 Task 不影响 IntermediateScript** | 中间表独立存在，删除任务时不会级联删除中间表 |
+| **intermediate_table_name 全局唯一** | 中间表名在整个系统中唯一，确保不会冲突 |
+| **可视化脚本通过字段关联中间表** | 使用 `intermediate_table_names` 字段（逗号分隔），简化设计 |
+
+#### 4. 约束设计
+
+| 约束类型 | 应用场景 |
+|----------|----------|
+| 唯一约束 | 中间表名全局唯一；同一任务下可视化脚本名唯一 |
+| 外键约束 | visualization_scripts.task_id 关联 tasks.id，级联删除 |
+
+#### 5. 配置存储
+
+- 采用键值对方式存储配置，灵活支持后续新增配置项
+- 支持配置分类（category）和敏感配置标记（is_sensitive）
+- 敏感配置（如 API Key）在存储时可以加密（当前版本明文存储，后续可增强）
 
 ### 表结构说明
 
 #### 1. 任务表 (tasks)
 
-**设计目的**：作为转换工作的顶层容器，统一管理一组相关的脚本转换工作。
+**设计目的**：作为针对可视化脚本的转换工作容器。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -110,8 +146,12 @@ sql_transfer/
 | updated_at | DATETIME | 修改时间 |
 
 **关系**：
-- 一对多关联 intermediate_scripts（中间表脚本）
-- 一对多关联 visualization_scripts（可视化脚本）
+- 一对多关联 `visualization_scripts`（可视化脚本）
+- **与中间表无关联**
+
+**重要说明**：
+- 删除任务时，会级联删除关联的可视化脚本
+- 删除任务时，**不会影响**中间表脚本
 
 ---
 
@@ -119,24 +159,29 @@ sql_transfer/
 
 **设计目的**：存储中间表脚本，定义如何从 ODPS 原始表构建达梦数据库的中间表。
 
+**关键特性**：
+- 中间表是**底层逻辑，独立存在**
+- 与任务表**无关联**
+- 删除任务时**不会影响**中间表
+- 中间表名**全局唯一**
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER | 主键，自增 |
-| task_id | INTEGER | 外键，关联 tasks.id，级联删除 |
-| intermediate_table_name | VARCHAR(255) | 中间表名，必填 |
+| intermediate_table_name | VARCHAR(255) | 中间表名，必填，**全局唯一** |
 | script | TEXT | 中间表脚本（SQL），必填 |
 | description | TEXT | 脚本描述，可选 |
 | created_at | DATETIME | 创建时间 |
 | updated_at | DATETIME | 修改时间 |
 
 **约束**：
-- `UNIQUE (task_id, intermediate_table_name)`：同一个任务下，中间表名必须唯一
-- `FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE`
+- `UNIQUE (intermediate_table_name)`：中间表名全局唯一
 
 **设计说明**：
-- 中间表名添加唯一约束，确保同一个任务下不会有重复的中间表名
-- 通过 task_id 与任务表建立外键关联
-- 当任务删除时，相关的中间表脚本会级联删除
+- 中间表脚本定义了如何从 ODPS 原始表构建中间表
+- 中间表可以被多个可视化脚本复用
+- 中间表独立于任务存在，生命周期不受任务影响
+- 中间表名全局唯一，确保系统中不会有重复的中间表
 
 ---
 
@@ -222,7 +267,6 @@ sql_transfer/
 | 表名 | 索引名 | 索引字段 |
 |------|--------|----------|
 | tasks | idx_tasks_name | name |
-| intermediate_scripts | idx_intermediate_scripts_task_id | task_id |
 | intermediate_scripts | idx_intermediate_scripts_table_name | intermediate_table_name |
 | visualization_scripts | idx_visualization_scripts_task_id | task_id |
 | visualization_scripts | idx_visualization_scripts_name | name |
@@ -269,7 +313,13 @@ uv run python manage_db.py status
 | init | 初始化数据库，创建表结构并插入默认配置数据。如果数据库已存在，不会重复创建。 |
 | clear | 清除所有表的数据，但保留表结构。执行前需要确认。 |
 | reset | 重置数据库，删除所有表后重新创建。执行前需要确认。 |
-| status | 查看数据库状态，包括表列表、记录数、字段信息等。 |
+| status | 查看数据库状态，包括表列表、记录数、字段信息、表关系图等。 |
+
+### 重要提醒
+
+- **删除任务时**：只会级联删除关联的可视化脚本，**不会影响**中间表脚本
+- **中间表是独立存在的**：可以被多个可视化脚本复用，生命周期不受任务影响
+- **中间表名全局唯一**：确保系统中不会有重复的中间表名
 
 ## 快速开始
 

@@ -8,6 +8,12 @@
     python manage_db.py clear     # 清除所有数据（保留表结构）
     python manage_db.py reset     # 重置数据库（删除所有表并重新创建）
     python manage_db.py status    # 查看数据库状态
+
+表关系说明：
+    - tasks（任务表）只与 visualization_scripts 关联
+    - visualization_scripts（可视化脚本表）依赖于 tasks（外键）
+    - intermediate_scripts（中间脚本表）独立存在，与任务无关
+    - configs（配置表）独立存在
 """
 
 import argparse
@@ -103,6 +109,13 @@ def init_db():
         # 显示表列表
         show_tables(db)
         
+        # 显示重要说明
+        print("\n📌 重要说明：")
+        print("   - tasks（任务表）只与 visualization_scripts 关联")
+        print("   - intermediate_scripts（中间脚本表）是独立存在的，与任务无关")
+        print("   - 删除任务时不会影响中间表")
+        print("   - 中间表名全局唯一")
+        
     except Exception as e:
         db.rollback()
         print(f"✗ 初始化失败: {e}")
@@ -117,6 +130,11 @@ def clear_data():
     - 清空所有表的数据
     - 保留表结构
     - 重置自增 ID
+    
+    注意：
+    - visualization_scripts 依赖于 tasks（外键），需要先清除
+    - intermediate_scripts 独立存在，与任务无关
+    - configs 独立存在
     """
     print("=" * 50)
     print("开始清除数据库数据...")
@@ -130,11 +148,13 @@ def clear_data():
     db = SessionLocal()
     try:
         # 清除数据的顺序（考虑外键约束）
+        # visualization_scripts 依赖 tasks，所以先清除
+        # intermediate_scripts 和 configs 独立存在，可以在任何时候清除
         tables_order = [
-            'visualization_scripts',
-            'intermediate_scripts',
-            'tasks',
-            'configs'  # 配置表也可以选择清除，或者保留
+            'visualization_scripts',  # 依赖 tasks，先清除
+            'tasks',                    # 被 visualization_scripts 依赖
+            'intermediate_scripts',     # 独立存在
+            'configs'                   # 独立存在
         ]
         
         print("\n清除表数据...")
@@ -210,6 +230,24 @@ def show_status():
     db = SessionLocal()
     try:
         show_tables(db)
+        
+        # 显示表关系说明
+        print("\n📋 表关系说明：")
+        print("   ┌─────────────────────────────────────────────────────┐")
+        print("   │  tasks (任务表)                                      │")
+        print("   │       │                                               │")
+        print("   │       └──►  visualization_scripts (可视化脚本表)    │")
+        print("   │                     │                                │")
+        print("   │                     └──►  (通过 intermediate_table_names 字段) │")
+        print("   │                                   │                   │")
+        print("   │                                   ▼                   │")
+        print("   │  intermediate_scripts (中间脚本表) ◄────────────────│")
+        print("   │  (独立存在，与任务无关)                              │")
+        print("   │                                                      │")
+        print("   │  configs (配置表)                                    │")
+        print("   │  (独立存在)                                          │")
+        print("   └─────────────────────────────────────────────────────┘")
+        
     except Exception as e:
         print(f"无法获取表信息: {e}")
     finally:
@@ -260,6 +298,11 @@ def main():
   python manage_db.py clear     清除所有数据
   python manage_db.py reset     重置数据库
   python manage_db.py status    查看数据库状态
+
+表关系：
+  - tasks 只与 visualization_scripts 关联
+  - intermediate_scripts 独立存在，与任务无关
+  - configs 独立存在
         """
     )
     
