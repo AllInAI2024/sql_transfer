@@ -1,26 +1,28 @@
 -- SQL脚本转换工具数据库初始化脚本
 -- 数据库类型: SQLite
 -- 创建日期: 2026-04-19
--- 版本: 2.0
+-- 版本: 3.0
 
 -- ============================================
 -- 数据库设计思路
 -- ============================================
 -- 
 -- 1. 任务表 (tasks)
---    - 任务是转换工作的顶层容器
---    - 每个任务可以包含多个中间表脚本和多个可视化脚本
---    - 通过任务可以统一管理一组相关的脚本转换工作
+--    - 任务是针对可视化脚本的转换工作容器
+--    - 每个任务包含一个可视化脚本
+--    - 任务只与可视化脚本相关，与中间表无关
+--    - 删除任务时，级联删除关联的可视化脚本
 -- 
 -- 2. 中间脚本表 (intermediate_scripts)
 --    - 中间表脚本定义了如何从 ODPS 原始表构建达梦数据库的中间表
---    - 每个中间表脚本对应一个唯一的中间表名（在同一个任务下）
---    - 添加唯一约束：同一个任务下，中间表名必须唯一
---    - 与任务表通过 task_id 建立外键关联
+--    - 中间表是底层逻辑，独立存在，与任务无关
+--    - intermediate_table_name 全局唯一，确保系统中不会有重复的中间表名
+--    - 与任务表无关联，删除任务时不会影响中间表
 -- 
 -- 3. 可视化脚本表 (visualization_scripts)
 --    - 可视化脚本是查询达梦数据库中间表的 SQL 脚本
---    - 每个可视化脚本需要关联一个或多个中间表
+--    - 每个可视化脚本属于一个任务
+--    - 每个可视化脚本需要关联一个或多个中间表（通过 intermediate_table_names 字段，逗号分隔）
 --    - 设计变更：不再使用多对多关联表，改用 intermediate_table_names 字段（逗号分隔）
 --    - 添加唯一约束：同一个任务下，脚本名必须唯一
 --    - 与任务表通过 task_id 建立外键关联
@@ -36,7 +38,11 @@
 
 -- ============================================
 -- 任务表 (tasks)
--- 转换之前先创建任务，每个任务包括多个 sql 脚本
+-- 转换之前先创建任务，每个任务针对一个可视化脚本
+-- 
+-- 设计说明：
+-- - 任务只与可视化脚本相关，与中间表无关
+-- - 删除任务时，级联删除关联的可视化脚本
 -- ============================================
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,24 +61,20 @@ CREATE INDEX IF NOT EXISTS idx_tasks_name ON tasks(name);
 -- 保存中间表脚本
 -- 
 -- 设计说明：
--- - 每个中间表脚本对应一个唯一的中间表名（在同一个任务下）
--- - 添加唯一约束 uq_intermediate_script_task_table
--- - task_id 是外键，关联 tasks 表
+-- - 中间表是底层逻辑，独立存在，与任务无关
+-- - intermediate_table_name 全局唯一，确保系统中不会有重复的中间表名
+-- - 与任务表无关联，删除任务时不会影响中间表
 -- ============================================
 CREATE TABLE IF NOT EXISTS intermediate_scripts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL,
-    intermediate_table_name VARCHAR(255) NOT NULL,
+    intermediate_table_name VARCHAR(255) NOT NULL UNIQUE,
     script TEXT NOT NULL,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    UNIQUE (task_id, intermediate_table_name)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 为中间脚本表创建索引
-CREATE INDEX IF NOT EXISTS idx_intermediate_scripts_task_id ON intermediate_scripts(task_id);
 CREATE INDEX IF NOT EXISTS idx_intermediate_scripts_table_name ON intermediate_scripts(intermediate_table_name);
 
 
@@ -81,11 +83,12 @@ CREATE INDEX IF NOT EXISTS idx_intermediate_scripts_table_name ON intermediate_s
 -- 保存可视化脚本
 -- 
 -- 设计说明：
+-- - 每个可视化脚本属于一个任务
 -- - 每个可视化脚本需要关联一个或多个中间表
 -- - 设计变更：不再使用多对多关联表，改用 intermediate_table_names 字段（逗号分隔）
 -- - 例如：intermediate_table_names = "table1,table2,table3"
--- - 添加唯一约束 uq_visualization_script_task_name
--- - task_id 是外键，关联 tasks 表
+-- - 添加唯一约束：同一个任务下，脚本名必须唯一
+-- - task_id 是外键，关联 tasks 表，级联删除
 -- 
 -- 字段说明：
 -- - intermediate_table_names: 关联的中间表名，多个用逗号分隔
@@ -241,4 +244,11 @@ VALUES (
 -- ============================================
 PRINT '数据库初始化完成！';
 PRINT '表结构：tasks, intermediate_scripts, visualization_scripts, configs';
+PRINT '';
+PRINT '重要说明：';
+PRINT '  - tasks（任务表）只与 visualization_scripts 关联';
+PRINT '  - intermediate_scripts（中间脚本表）是独立存在的，与任务无关';
+PRINT '  - 删除任务时不会影响中间表';
+PRINT '  - 中间表名全局唯一';
+PRINT '';
 PRINT '默认配置已插入，请在配置页面修改 LLM 相关设置。';

@@ -10,12 +10,13 @@ from app.database import Base
 class Task(Base):
     """
     任务表
-    - 转换之前先创建任务，每个任务包括多个 sql 脚本
+    - 转换之前先创建任务，每个任务针对一个可视化脚本
     
     设计思路：
-    - 任务是转换工作的顶层容器
-    - 每个任务可以包含多个中间表脚本和多个可视化脚本
-    - 通过任务可以统一管理一组相关的脚本转换工作
+    - 任务是针对可视化脚本的转换工作容器
+    - 每个任务包含一个可视化脚本
+    - 任务只与可视化脚本相关，与中间表无关
+    - 通过任务可以统一管理可视化脚本的转换工作
     """
     __tablename__ = "tasks"
     
@@ -32,12 +33,7 @@ class Task(Base):
         comment="修改时间"
     )
     
-    # 关系
-    intermediate_scripts: Mapped[List["IntermediateScript"]] = relationship(
-        "IntermediateScript", 
-        back_populates="task",
-        cascade="all, delete-orphan"
-    )
+    # 关系：任务只与可视化脚本相关，与中间表无关
     visualization_scripts: Mapped[List["VisualizationScript"]] = relationship(
         "VisualizationScript", 
         back_populates="task",
@@ -55,24 +51,19 @@ class IntermediateScript(Base):
     
     设计思路：
     - 中间表脚本定义了如何从 ODPS 原始表构建达梦数据库的中间表
-    - 每个中间表脚本对应一个唯一的中间表名（在同一个任务下）
-    - intermediate_table_name 添加唯一约束，确保同一个任务下不会有重复的中间表名
-    - 与任务表通过 task_id 建立外键关联
+    - 中间表是底层逻辑，独立存在，与任务无关
+    - intermediate_table_name 全局唯一，确保系统中不会有重复的中间表名
+    - 与任务表无关联，删除任务时不会影响中间表
     """
     __tablename__ = "intermediate_scripts"
     
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
-    task_id: Mapped[int] = mapped_column(
-        ForeignKey("tasks.id", ondelete="CASCADE"), 
-        nullable=False, 
-        index=True,
-        comment="所属任务ID"
-    )
     intermediate_table_name: Mapped[str] = mapped_column(
         String(255), 
         nullable=False, 
         index=True,
-        comment="中间表名"
+        unique=True,
+        comment="中间表名（全局唯一）"
     )
     script: Mapped[str] = mapped_column(Text, nullable=False, comment="中间表脚本")
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="脚本描述")
@@ -86,13 +77,7 @@ class IntermediateScript(Base):
         comment="修改时间"
     )
     
-    # 唯一约束：同一个任务下，中间表名必须唯一
-    __table_args__ = (
-        UniqueConstraint('task_id', 'intermediate_table_name', name='uq_intermediate_script_task_table'),
-    )
-    
-    # 关系
-    task: Mapped["Task"] = relationship("Task", back_populates="intermediate_scripts")
+    # 注意：中间表与任务无关联，独立存在
     
     def __repr__(self):
         return f"<IntermediateScript(id={self.id}, intermediate_table_name='{self.intermediate_table_name}')>"
@@ -105,6 +90,7 @@ class VisualizationScript(Base):
     
     设计思路：
     - 可视化脚本是查询达梦数据库中间表的 SQL 脚本
+    - 每个可视化脚本属于一个任务
     - 每个可视化脚本需要关联一个或多个中间表（通过 intermediate_table_names 字段，逗号分隔）
     - 不再使用多对多关联表，简化设计
     - name 添加唯一约束，确保同一个任务下不会有重复的脚本名
