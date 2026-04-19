@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>{{ app_name }}</h1>
+                    <span class="version">v{{ app_version }}</span>
+                </div>
+                <nav class="nav-menu">
+                    <ul>
+                        <li>
+                            <a href="/" class="{% if active_menu == 'home' or not active_menu %}active{% endif %}">
+                                首页
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/visualization/" class="{% if active_menu == 'visualization' %}active{% endif %}">
+                                可视化脚本
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/anonymization/" class="{% if active_menu == 'anonymization' %}active{% endif %}">
+                                匿名化
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/conversion/" class="{% if active_menu == 'conversion' %}active{% endif %}">
+                                脚本转换
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/validation/" class="{% if active_menu == 'validation' %}active{% endif %}">
+                                验证
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/configuration/" class="{% if active_menu == 'configuration' %}active{% endif %}">
+                                配置
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2026 {{ app_name }}. 版权所有.</p>
+                <p class="footer-info">
+                    SQL脚本转换工具 - 达梦中间表 → ODPS原始表
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

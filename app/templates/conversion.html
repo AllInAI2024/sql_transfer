@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}脚本转换 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>脚本转换</h2>
+    <p>核心转换功能，将中间表脚本转换为直接查询 ODPS 的脚本。</p>
+</div>
+
+<div class="conversion-workflow">
+    <div class="workflow-step">
+        <div class="step-circle">1</div>
+        <div class="step-content">
+            <h4>选择任务</h4>
+            <p>选择或创建一个转换任务</p>
+        </div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+        <div class="step-circle">2</div>
+        <div class="step-content">
+            <h4>配置脚本</h4>
+            <p>上传可视化脚本和中间表脚本</p>
+        </div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+        <div class="step-circle">3</div>
+        <div class="step-content">
+            <h4>执行转换</h4>
+            <p>AI 智能分析并生成新脚本</p>
+        </div>
+    </div>
+    <div class="workflow-arrow">→</div>
+    <div class="workflow-step">
+        <div class="step-circle">4</div>
+        <div class="step-content">
+            <h4>获取结果</h4>
+            <p>查看和下载转换后的脚本</p>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="task-selection">
+        <h3>选择任务</h3>
+        <div class="task-actions">
+            <button class="btn btn-primary">创建新任务</button>
+            <button class="btn btn-secondary">选择已有任务</button>
+        </div>
+    </div>
+
+    <div class="script-upload-section">
+        <div class="two-column-layout">
+            <div class="column">
+                <h3>可视化脚本</h3>
+                <div class="upload-area">
+                    <div class="upload-placeholder">
+                        <p>拖拽文件到此处或</p>
+                        <button class="btn btn-secondary">选择文件</button>
+                        <p class="upload-hint">支持 .sql 文件</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column">
+                <h3>中间表脚本</h3>
+                <div class="upload-area">
+                    <div class="upload-placeholder">
+                        <p>拖拽文件到此处或</p>
+                        <button class="btn btn-secondary">选择文件</button>
+                        <p class="upload-hint">支持多个 .sql 文件</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="conversion-options">
+        <h3>转换选项</h3>
+        <div class="options-grid">
+            <div class="option-item">
+                <label>
+                    <input type="checkbox" checked> 自动整合脚本
+                </label>
+            </div>
+            <div class="option-item">
+                <label>
+                    <input type="checkbox" checked> 执行匿名化处理
+                </label>
+            </div>
+            <div class="option-item">
+                <label>
+                    <input type="checkbox"> 保留原始格式
+                </label>
+            </div>
+            <div class="option-item">
+                <label>
+                    <input type="checkbox" checked> 添加转换注释
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="conversion-action">
+        <button class="btn btn-primary btn-large">开始转换</button>
+        <p class="conversion-note">转换过程支持 SSE 流式输出，您可以实时查看进度</p>
+    </div>
+</div>
+
+<div class="progress-section" style="display: none;">
+    <h3>转换进度</h3>
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: 0%;"></div>
+    </div>
+    <div class="progress-log">
+        <p>准备开始转换...</p>
+    </div>
+</div>
+
+<div class="history-section">
+    <h3>转换历史</h3>
+    <div class="placeholder-message">
+        <p>转换历史记录将显示在这里...</p>
+        <p class="placeholder-note">功能开发中</p>
+    </div>
+</div>
+{% endblock %}

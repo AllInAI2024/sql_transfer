@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="welcome-section">
+    <h2>欢迎使用 SQL 脚本转换工具</h2>
+    <p class="subtitle">
+        将基于达梦数据库中间表的可视化脚本，转换为直接查询 ODPS (MaxCompute) 原始表的新指标脚本。
+    </p>
+</div>
+
+<div class="features-section">
+    <h3>功能模块</h3>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h4><a href="/visualization/">可视化脚本</a></h4>
+            <p>管理和查看可视化脚本，包括脚本的导入、编辑和删除。</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h4><a href="/anonymization/">匿名化</a></h4>
+            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🔄</div>
+            <h4><a href="/conversion/">脚本转换</a></h4>
+            <p>核心转换功能，将中间表脚本转换为直接查询 ODPS 的脚本。</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">✅</div>
+            <h4><a href="/validation/">验证</a></h4>
+            <p>验证转换后的脚本正确性，确保转换结果符合预期。</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">⚙️</div>
+            <h4><a href="/configuration/">配置</a></h4>
+            <p>系统配置管理，包括数据库连接、API 密钥等设置。</p>
+        </div>
+    </div>
+</div>
+
+<div class="info-section">
+    <h3>转换本质</h3>
+    <div class="info-content">
+        <ul>
+            <li>
+                <strong>可视化脚本</strong> 查询达梦数据库的中间表（通过中间表脚本从 ODPS 原始表构建）
+            </li>
+            <li>
+                <strong>中间表脚本</strong> 定义了中间表如何从 ODPS 原始表获取数据
+            </li>
+            <li>
+                转换时需要分析中间表脚本，理解 ODPS 原始表的结构和查询逻辑
+            </li>
+            <li>
+                结合两者生成直接查询 ODPS 原始表的新脚本，跳过中间表
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="quick-start-section">
+    <h3>快速开始</h3>
+    <div class="steps">
+        <div class="step">
+            <span class="step-number">1</span>
+            <p>前往 <a href="/configuration/">配置</a> 页面设置数据库连接和 API 密钥</p>
+        </div>
+        <div class="step">
+            <span class="step-number">2</span>
+            <p>在 <a href="/visualization/">可视化脚本</a> 页面导入或创建脚本</p>
+        </div>
+        <div class="step">
+            <span class="step-number">3</span>
+            <p>使用 <a href="/conversion/">脚本转换</a> 功能进行转换</p>
+        </div>
+        <div class="step">
+            <span class="step-number">4</span>
+            <p>通过 <a href="/validation/">验证</a> 功能确认转换结果</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
