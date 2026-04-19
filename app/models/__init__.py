@@ -2,12 +2,12 @@ from app.models.models import (
     Task,
     IntermediateScript,
     VisualizationScript,
-    visualization_intermediate_association
+    Config
 )
 
 __all__ = [
     "Task",
     "IntermediateScript",
     "VisualizationScript",
-    "visualization_intermediate_association"
+    "Config"
 ]
