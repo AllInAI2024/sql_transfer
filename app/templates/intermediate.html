@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}中间表 - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>中间表管理</h2>
+    <p>管理中间表脚本，支持通过 Excel 批量导入、查看详情和删除操作。</p>
+</div>
+
+<div class="action-bar">
+    <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+    <button class="btn btn-primary" id="importBtn">
+        <span>📥</span> 导入中间表脚本
+    </button>
+    <button class="btn btn-secondary" id="refreshBtn">
+        <span>🔄</span> 刷新列表
+    </button>
+</div>
+
+<div class="info-section" id="importInfo">
+    <h3>导入说明</h3>
+    <div class="info-content">
+        <p>Excel 文件需包含以下两列：</p>
+        <ul>
+            <li><strong>第一列：中间表名</strong> - 中间表的名称（全局唯一）</li>
+            <li><strong>第二列：中间表脚本</strong> - 定义如何从原始表构建中间表的 SQL 脚本</li>
+        </ul>
+        <p class="import-note">注意：如果导入的中间表名已存在，将覆盖原有脚本内容。</p>
+    </div>
+</div>
+
+<div class="table-section">
+    <table class="data-table" id="scriptsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>中间表名</th>
+                <th>创建时间</th>
+                <th>更新时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="scriptsTableBody">
+            <tr>
+                <td colspan="5" class="loading-cell">
+                    <div class="loading">加载中...</div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal" id="detailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="detailModalTitle">中间表详情</h3>
+            <button class="modal-close" id="detailModalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-group">
+                <label>中间表名：</label>
+                <span id="detailTableName"></span>
+            </div>
+            <div class="detail-group">
+                <label>创建时间：</label>
+                <span id="detailCreatedAt"></span>
+            </div>
+            <div class="detail-group">
+                <label>更新时间：</label>
+                <span id="detailUpdatedAt"></span>
+            </div>
+            <div class="detail-group">
+                <label>中间表脚本：</label>
+                <pre id="detailScript" class="script-content"></pre>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="detailModalCloseBtn">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除弹窗 -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h3>确认删除</h3>
+            <button class="modal-close" id="deleteModalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteMessage">确定要删除中间表 "<span id="deleteTableName"></span>" 吗？</p>
+            <p class="delete-warning">此操作不可恢复，请谨慎操作。</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="deleteModalCancelBtn">取消</button>
+            <button class="btn btn-danger" id="deleteModalConfirmBtn">确认删除</button>
+        </div>
+    </div>
+</div>
+
+<!-- 消息提示 -->
+<div class="toast" id="toast"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 全局变量
+    let currentDeleteId = null;
+    let currentDeleteName = null;
+
+    // DOM 元素
+    const excelFileInput = document.getElementById('excelFile');
+    const importBtn = document.getElementById('importBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const scriptsTableBody = document.getElementById('scriptsTableBody');
+    const detailModal = document.getElementById('detailModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const toast = document.getElementById('toast');
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadScripts();
+        setupEventListeners();
+    });
+
+    // 设置事件监听器
+    function setupEventListeners() {
+        // 导入按钮
+        importBtn.addEventListener('click', function() {
+            excelFileInput.click();
+        });
+
+        // 文件选择
+        excelFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                importExcelFile(this.files[0]);
+            }
+        });
+
+        // 刷新按钮
+        refreshBtn.addEventListener('click', function() {
+            loadScripts();
+        });
+
+        // 详情弹窗关闭
+        document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
+        document.getElementById('detailModalCloseBtn').addEventListener('click', closeDetailModal);
+
+        // 删除弹窗关闭
+        document.getElementById('deleteModalClose').addEventListener('click', closeDeleteModal);
+        document.getElementById('deleteModalCancelBtn').addEventListener('click', closeDeleteModal);
+        document.getElementById('deleteModalConfirmBtn').addEventListener('click', confirmDelete);
+
+        // 点击弹窗外部关闭
+        detailModal.addEventListener('click', function(e) {
+            if (e.target === detailModal) {
+                closeDetailModal();
+            }
+        });
+
+        deleteModal.addEventListener('click', function(e) {
+            if (e.target === deleteModal) {
+                closeDeleteModal();
+            }
+        });
+    }
+
+    // 加载中间表列表
+    async function loadScripts() {
+        try {
+            const response = await fetch('/intermediate/list');
+            const result = await response.json();
+
+            if (result.success) {
+                renderScriptsTable(result.data);
+            } else {
+                showToast('加载列表失败', 'error');
+            }
+        } catch (error) {
+            console.error('加载列表失败:', error);
+            showToast('加载列表失败', 'error');
+        }
+    }
+
+    // 渲染表格
+    function renderScriptsTable(scripts) {
+        if (scripts.length === 0) {
+            scriptsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        <div class="empty-message">
+                            <div class="empty-icon">📋</div>
+                            <p>暂无中间表数据</p>
+                            <p class="empty-note">请点击上方"导入中间表脚本"按钮导入数据</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        scriptsTableBody.innerHTML = scripts.map(script => `
+            <tr>
+                <td>${script.id}</td>
+                <td><strong>${escapeHtml(script.intermediate_table_name)}</strong></td>
+                <td>${formatDateTime(script.created_at)}</td>
+                <td>${formatDateTime(script.updated_at)}</td>
+                <td class="action-cell">
+                    <button class="btn btn-sm btn-info" onclick="showDetail(${script.id})">
+                        详情
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="showDeleteConfirm(${script.id}, '${escapeHtml(script.intermediate_table_name)}')">
+                        删除
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // 导入 Excel 文件
+    async function importExcelFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            importBtn.disabled = true;
+            importBtn.innerHTML = '<span>⏳</span> 导入中...';
+
+            const response = await fetch('/intermediate/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadScripts();
+            } else {
+                showToast(result.detail || '导入失败', 'error');
+            }
+        } catch (error) {
+            console.error('导入失败:', error);
+            showToast('导入失败', 'error');
+        } finally {
+            importBtn.disabled = false;
+            importBtn.innerHTML = '<span>📥</span> 导入中间表脚本';
+            excelFileInput.value = '';
+        }
+    }
+
+    // 显示详情
+    async function showDetail(scriptId) {
+        try {
+            const response = await fetch(`/intermediate/${scriptId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const script = result.data;
+                document.getElementById('detailTableName').textContent = script.intermediate_table_name;
+                document.getElementById('detailCreatedAt').textContent = formatDateTime(script.created_at);
+                document.getElementById('detailUpdatedAt').textContent = formatDateTime(script.updated_at);
+                document.getElementById('detailScript').textContent = script.script;
+
+                openDetailModal();
+            } else {
+                showToast('获取详情失败', 'error');
+            }
+        } catch (error) {
+            console.error('获取详情失败:', error);
+            showToast('获取详情失败', 'error');
+        }
+    }
+
+    // 显示删除确认
+    function showDeleteConfirm(scriptId, tableName) {
+        currentDeleteId = scriptId;
+        currentDeleteName = tableName;
+        document.getElementById('deleteTableName').textContent = tableName;
+        openDeleteModal();
+    }
+
+    // 确认删除
+    async function confirmDelete() {
+        if (!currentDeleteId) return;
+
+        try {
+            const confirmBtn = document.getElementById('deleteModalConfirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '删除中...';
+
+            const response = await fetch(`/intermediate/${currentDeleteId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('删除成功', 'success');
+                closeDeleteModal();
+                loadScripts();
+            } else {
+                showToast(result.detail || '删除失败', 'error');
+            }
+        } catch (error) {
+            console.error('删除失败:', error);
+            showToast('删除失败', 'error');
+        } finally {
+            const confirmBtn = document.getElementById('deleteModalConfirmBtn');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '确认删除';
+            currentDeleteId = null;
+            currentDeleteName = null;
+        }
+    }
+
+    // 弹窗控制
+    function openDetailModal() {
+        detailModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDetailModal() {
+        detailModal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function openDeleteModal() {
+        deleteModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDeleteModal() {
+        deleteModal.classList.remove('active');
+        document.body.style.overflow = '';
+        currentDeleteId = null;
+        currentDeleteName = null;
+    }
+
+    // 工具函数
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // 显示提示消息
+    function showToast(message, type = 'info') {
+        toast.textContent = message;
+        toast.className = `toast toast-${type}`;
+        toast.style.display = 'block';
+
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+</script>
+{% endblock %}

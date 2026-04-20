@@ -10,6 +10,7 @@ from app.config import get_settings, templates, TEMPLATES_DIR, STATIC_DIR
 from app.database import init_db
 from app.routers import (
     router_visualization,
+    router_intermediate,
     router_anonymization,
     router_conversion,
     router_validation,
@@ -52,6 +53,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 app.include_router(router_visualization, prefix="/visualization", tags=["可视化脚本"])
+app.include_router(router_intermediate, prefix="/intermediate", tags=["中间表"])
 app.include_router(router_anonymization, prefix="/anonymization", tags=["匿名化"])
 app.include_router(router_conversion, prefix="/conversion", tags=["脚本转换"])
 app.include_router(router_validation, prefix="/validation", tags=["验证"])
