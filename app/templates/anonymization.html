@@ -7,7 +7,7 @@
     <div class="header-content">
         <div class="header-left">
             <h2>匿名化处理</h2>
-            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+            <p>创建任务管理脚本匿名化和转换工作。</p>
         </div>
         <div class="header-right">
             <button class="btn btn-outline" id="toggleInfoBtn">
@@ -33,45 +33,190 @@
                 <div class="info-item">
                     <div class="info-icon">1</div>
                     <div class="info-text">
-                        <h4>匿名化规则</h4>
-                        <ul>
-                            <li><strong>表名</strong>：自动识别并匿名化为 <code>table_001</code>, <code>table_002</code> 等格式</li>
-                            <li><strong>字段名</strong>：自动识别并匿名化为 <code>field_001</code>, <code>field_002</code> 等格式</li>
-                            <li><strong>SQL 关键词</strong>：所有 SQL 关键词保持不变，支持多种数据库方言</li>
-                            <li><strong>特殊字符串</strong>：日期格式字符串（如 'yyyy-MM-dd', 'HH24:MI:SS'）保持不变</li>
-                        </ul>
+                        <h4>任务管理</h4>
+                        <p>创建任务来组织和管理脚本匿名化和转换工作。每个任务可以包含多个可视化脚本。</p>
                     </div>
                 </div>
                 <div class="info-item">
                     <div class="info-icon">2</div>
                     <div class="info-text">
-                        <h4>双向匿名化</h4>
-                        <p>系统支持正向匿名化和反向匿名化，两次操作均采用同一个编码字典：</p>
+                        <h4>方言配置</h4>
+                        <p>每个任务需要指定三种方言：</p>
                         <ul>
-                            <li><strong>正向匿名化</strong>：将原始脚本中的表名、字段名替换为无意义的标识符</li>
-                            <li><strong>反向匿名化</strong>：根据编码字典将匿名化后的脚本还原为原始脚本</li>
+                            <li><strong>中间表方言</strong>：中间表脚本使用的数据库方言</li>
+                            <li><strong>可视化脚本方言</strong>：可视化脚本使用的数据库方言</li>
+                            <li><strong>转换脚本方言</strong>：转换后脚本使用的数据库方言</li>
                         </ul>
+                        <p><strong>注意</strong>：中间表方言和转换脚本方言必须相同，因为两者都是基于原始数据的脚本。</p>
                     </div>
                 </div>
                 <div class="info-item">
                     <div class="info-icon">3</div>
                     <div class="info-text">
-                        <h4>额外功能</h4>
+                        <h4>匿名化规则</h4>
                         <ul>
-                            <li><strong>删除空行</strong>：匿名化过程中自动删除脚本中的空行</li>
-                            <li><strong>删除注释</strong>：匿名化过程中自动删除脚本中的注释（包括行内注释和块注释）</li>
+                            <li><strong>表名</strong>：自动识别并匿名化为 <code>table_001</code>, <code>table_002</code> 等格式</li>
+                            <li><strong>字段名</strong>：自动识别并匿名化为 <code>field_001</code>, <code>field_002</code> 等格式</li>
+                            <li><strong>SQL 关键词</strong>：所有 SQL 关键词保持不变</li>
+                            <li><strong>特殊字符串</strong>：日期格式字符串保持不变</li>
                         </ul>
                     </div>
                 </div>
                 <div class="info-item">
                     <div class="info-icon">4</div>
                     <div class="info-text">
-                        <h4>排除列表</h4>
-                        <p>可在<a href="/configuration/">配置页面</a>设置不需要匿名化的字符串列表。只要表名或字段名包含排除列表中的字符串，就不会被匿名化。判断不区分大小写。</p>
-                        <p><strong>示例</strong>：如果排除列表包含 "date"，则 "create_date", "update_time" 等名称不会被匿名化。</p>
+                        <h4>双向匿名化</h4>
+                        <p>系统支持正向匿名化和反向匿名化：</p>
+                        <ul>
+                            <li><strong>正向匿名化</strong>：将原始脚本中的表名、字段名替换为无意义的标识符</li>
+                            <li><strong>反向匿名化</strong>：根据编码字典将匿名化后的脚本还原为原始脚本</li>
+                        </ul>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="detail-section-header">
+        <span class="section-icon">➕</span>
+        <h4>创建新任务</h4>
+    </div>
+    <div class="create-form-card">
+        <form id="createTaskForm">
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="taskName" class="form-label">任务名称 <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="taskName" name="name" 
+                           placeholder="请输入任务名称" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="taskDescription" class="form-label">任务描述</label>
+                <textarea class="form-textarea" id="taskDescription" name="description" 
+                          placeholder="请输入任务描述（可选）" rows="2"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="intermediateDialect" class="form-label">中间表方言 <span class="required">*</span></label>
+                    <select class="form-select" id="intermediateDialect" name="intermediate_dialect_id" required>
+                        <option value="">请选择方言</option>
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect.id }}">{{ dialect.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="visualizationDialect" class="form-label">可视化脚本方言 <span class="required">*</span></label>
+                    <select class="form-select" id="visualizationDialect" name="visualization_dialect_id" required>
+                        <option value="">请选择方言</option>
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect.id }}">{{ dialect.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="convertedDialect" class="form-label">转换脚本方言 <span class="required">*</span></label>
+                    <select class="form-select" id="convertedDialect" name="converted_dialect_id" required>
+                        <option value="">请选择方言</option>
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect.id }}">{{ dialect.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint" id="dialectHint" style="display: none; color: #dc2626; margin-top: 0.5rem; font-size: 0.8125rem;">
+                        ⚠️ 中间表方言和转换脚本方言必须相同
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="createTaskBtn">
+                    <span class="btn-icon">➕</span>
+                    <span class="btn-text">创建任务</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="detail-section-header">
+        <span class="section-icon">📋</span>
+        <h4>任务列表</h4>
+        <span class="task-count" id="taskCount">共 {{ tasks|length }} 个任务</span>
+    </div>
+    
+    <div id="taskListContainer">
+        {% if tasks %}
+        <div class="task-list">
+            {% for task in tasks %}
+            <div class="task-item" data-task-id="{{ task.id }}">
+                <div class="task-main" onclick="window.location.href='/anonymization/task/{{ task.id }}'">
+                    <div class="task-icon">
+                        {% if task.visualization_script_count > 0 %}
+                        📁
+                        {% else %}
+                        📄
+                        {% endif %}
+                    </div>
+                    <div class="task-info">
+                        <h5 class="task-name">{{ task.name }}</h5>
+                        {% if task.description %}
+                        <p class="task-desc">{{ task.description }}</p>
+                        {% endif %}
+                        <div class="task-meta">
+                            <span class="task-badge">中间表: {{ task.intermediate_dialect_name }}</span>
+                            <span class="task-badge">可视化: {{ task.visualization_dialect_name }}</span>
+                            <span class="task-badge">转换: {{ task.converted_dialect_name }}</span>
+                            {% if task.visualization_script_count > 0 %}
+                            <span class="task-badge task-badge-primary">{{ task.visualization_script_count }} 个脚本</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <span class="task-time">更新: {{ task.updated_at }}</span>
+                    <button class="btn btn-danger btn-sm delete-task-btn" data-task-id="{{ task.id }}" 
+                            title="删除任务" onclick="event.stopPropagation();">
+                        <span>🗑️</span> 删除
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h4>暂无任务</h4>
+            <p>创建您的第一个任务，开始管理脚本匿名化和转换工作。</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModalOverlay" style="display: none;">
+    <div class="modal-container modal-small" id="deleteModal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <span class="modal-icon warning">⚠️</span>
+                <h3>确认删除</h3>
+            </div>
+            <button class="modal-close-btn" id="deleteModalClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="warning-message">
+                <p>确定要删除任务 "<strong id="deleteTaskName">-</strong>" 吗？</p>
+                <p class="warning-note">此操作将同时删除该任务的所有可视化脚本，且不可恢复，请谨慎操作。</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="deleteModalCancelBtn">取消</button>
+            <button class="btn btn-danger" id="deleteModalConfirmBtn">确认删除</button>
         </div>
     </div>
 </div>
@@ -97,7 +242,342 @@ document.addEventListener('DOMContentLoaded', function() {
     collapseBtn.addEventListener('click', function() {
         collapsibleInfo.style.display = 'none';
     });
+    
+    const intermediateDialect = document.getElementById('intermediateDialect');
+    const convertedDialect = document.getElementById('convertedDialect');
+    const dialectHint = document.getElementById('dialectHint');
+    
+    function validateDialects() {
+        const intermediateId = intermediateDialect.value;
+        const convertedId = convertedDialect.value;
+        
+        if (intermediateId && convertedId && intermediateId !== convertedId) {
+            dialectHint.style.display = 'block';
+            return false;
+        }
+        dialectHint.style.display = 'none';
+        return true;
+    }
+    
+    intermediateDialect.addEventListener('change', validateDialects);
+    convertedDialect.addEventListener('change', validateDialects);
+    
+    const createTaskForm = document.getElementById('createTaskForm');
+    const createTaskBtn = document.getElementById('createTaskBtn');
+    
+    createTaskForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!validateDialects()) {
+            showToast('中间表方言和转换脚本方言必须相同', 'warning');
+            return;
+        }
+        
+        const name = document.getElementById('taskName').value.trim();
+        const description = document.getElementById('taskDescription').value.trim();
+        const intermediateDialectId = parseInt(document.getElementById('intermediateDialect').value);
+        const visualizationDialectId = parseInt(document.getElementById('visualizationDialect').value);
+        const convertedDialectId = parseInt(document.getElementById('convertedDialect').value);
+        
+        if (!name) {
+            showToast('请输入任务名称', 'warning');
+            return;
+        }
+        
+        if (!intermediateDialectId || !visualizationDialectId || !convertedDialectId) {
+            showToast('请选择所有方言', 'warning');
+            return;
+        }
+        
+        createTaskBtn.disabled = true;
+        createTaskBtn.classList.add('loading');
+        
+        try {
+            const response = await fetch('/anonymization/api/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description || null,
+                    intermediate_dialect_id: intermediateDialectId,
+                    visualization_dialect_id: visualizationDialectId,
+                    converted_dialect_id: convertedDialectId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('任务创建成功', 'success');
+                createTaskForm.reset();
+                dialectHint.style.display = 'none';
+                await loadTasks();
+            } else {
+                showToast(result.detail || '创建任务失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            createTaskBtn.disabled = false;
+            createTaskBtn.classList.remove('loading');
+        }
+    });
+    
+    let taskToDeleteId = null;
+    let taskToDeleteName = null;
+    
+    document.querySelectorAll('.delete-task-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            taskToDeleteId = this.getAttribute('data-task-id');
+            const taskItem = this.closest('.task-item');
+            taskToDeleteName = taskItem.querySelector('.task-name').textContent;
+            openDeleteModal();
+        });
+    });
+    
+    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+    const deleteModalClose = document.getElementById('deleteModalClose');
+    const deleteModalCancelBtn = document.getElementById('deleteModalCancelBtn');
+    const deleteModalConfirmBtn = document.getElementById('deleteModalConfirmBtn');
+    const deleteTaskNameEl = document.getElementById('deleteTaskName');
+    
+    function openDeleteModal() {
+        deleteTaskNameEl.textContent = taskToDeleteName;
+        deleteModalOverlay.style.display = 'flex';
+    }
+    
+    function closeDeleteModal() {
+        deleteModalOverlay.style.display = 'none';
+        taskToDeleteId = null;
+        taskToDeleteName = null;
+    }
+    
+    deleteModalClose.addEventListener('click', closeDeleteModal);
+    deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
+    
+    deleteModalOverlay.addEventListener('click', function(e) {
+        if (e.target === deleteModalOverlay) {
+            closeDeleteModal();
+        }
+    });
+    
+    deleteModalConfirmBtn.addEventListener('click', async function() {
+        if (!taskToDeleteId) return;
+        
+        this.disabled = true;
+        this.textContent = '删除中...';
+        
+        try {
+            const response = await fetch(`/anonymization/api/tasks/${taskToDeleteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast(result.error || '任务删除成功', 'success');
+                closeDeleteModal();
+                await loadTasks();
+            } else {
+                showToast(result.detail || '删除任务失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            this.disabled = false;
+            this.textContent = '确认删除';
+        }
+    });
 });
+
+async function loadTasks() {
+    try {
+        const response = await fetch('/anonymization/api/tasks');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderTasks(result.tasks);
+        }
+    } catch (error) {
+        console.error('加载任务失败:', error);
+    }
+}
+
+function renderTasks(tasks) {
+    const container = document.getElementById('taskListContainer');
+    const taskCountEl = document.getElementById('taskCount');
+    
+    taskCountEl.textContent = `共 ${tasks.length} 个任务`;
+    
+    if (tasks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h4>暂无任务</h4>
+                <p>创建您的第一个任务，开始管理脚本匿名化和转换工作。</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="task-list">';
+    
+    tasks.forEach(task => {
+        const hasScripts = task.visualization_script_count > 0;
+        
+        html += `
+            <div class="task-item" data-task-id="${task.id}">
+                <div class="task-main" onclick="window.location.href='/anonymization/task/${task.id}'">
+                    <div class="task-icon">
+                        ${hasScripts ? '📁' : '📄'}
+                    </div>
+                    <div class="task-info">
+                        <h5 class="task-name">${escapeHtml(task.name)}</h5>
+                        ${task.description ? `<p class="task-desc">${escapeHtml(task.description)}</p>` : ''}
+                        <div class="task-meta">
+                            <span class="task-badge">中间表: ${escapeHtml(task.intermediate_dialect_name || '-')}</span>
+                            <span class="task-badge">可视化: ${escapeHtml(task.visualization_dialect_name || '-')}</span>
+                            <span class="task-badge">转换: ${escapeHtml(task.converted_dialect_name || '-')}</span>
+                            ${hasScripts ? `<span class="task-badge task-badge-primary">${task.visualization_script_count} 个脚本</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <span class="task-time">更新: ${task.updated_at || '-'}</span>
+                    <button class="btn btn-danger btn-sm delete-task-btn" data-task-id="${task.id}" 
+                            title="删除任务" onclick="event.stopPropagation(); openDeleteDialog(this);">
+                        <span>🗑️</span> 删除
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    container.querySelectorAll('.delete-task-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openDeleteDialog(this);
+        });
+    });
+}
+
+let pendingDeleteId = null;
+let pendingDeleteName = null;
+
+function openDeleteDialog(btn) {
+    const taskId = btn.getAttribute('data-task-id');
+    const taskItem = btn.closest('.task-item');
+    const taskName = taskItem.querySelector('.task-name').textContent;
+    
+    pendingDeleteId = taskId;
+    pendingDeleteName = taskName;
+    document.getElementById('deleteTaskName').textContent = taskName;
+    document.getElementById('deleteModalOverlay').style.display = 'flex';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modalOverlay = document.getElementById('deleteModalOverlay');
+    const modalClose = document.getElementById('deleteModalClose');
+    const modalCancel = document.getElementById('deleteModalCancelBtn');
+    const modalConfirm = document.getElementById('deleteModalConfirmBtn');
+    
+    function closeModal() {
+        modalOverlay.style.display = 'none';
+        pendingDeleteId = null;
+        pendingDeleteName = null;
+    }
+    
+    modalClose.addEventListener('click', closeModal);
+    modalCancel.addEventListener('click', closeModal);
+    
+    modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
+    });
+    
+    modalConfirm.addEventListener('click', async function() {
+        if (!pendingDeleteId) return;
+        
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = '删除中...';
+        
+        try {
+            const response = await fetch(`/anonymization/api/tasks/${pendingDeleteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast(result.error || '任务删除成功', 'success');
+                closeModal();
+                await loadTasks();
+            } else {
+                showToast(result.detail || '删除任务失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            this.disabled = false;
+            this.textContent = originalText;
+        }
+    });
+});
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+    };
+    
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
 </script>
 
 <style>
@@ -237,34 +717,378 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 0.85rem;
 }
 
-.info-text a {
-    color: #3b82f6;
-    text-decoration: underline;
+.create-form-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.info-text a:hover {
-    color: #2563eb;
+.form-row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
 }
 
-.config-section h3 {
+.form-group {
     margin-bottom: 1rem;
-    color: #2c3e50;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-label .required {
+    color: #dc2626;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.form-select {
+    cursor: pointer;
+    min-width: 180px;
+}
+
+.form-hint {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.form-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:disabled,
+.btn-primary.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.detail-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.detail-section-header .section-icon {
     font-size: 1.25rem;
 }
 
-.config-section .info-content {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 1.5rem;
+.detail-section-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2c3e50;
 }
 
-.config-section .info-content p {
-    margin-bottom: 1rem;
+.task-count {
+    margin-left: auto;
+    font-size: 0.875rem;
     color: #64748b;
 }
 
-.config-form {
-    margin-top: 1rem;
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-item {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.task-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.task-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-name {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.task-desc {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.task-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    background: #f1f5f9;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+}
+
+.task-badge-primary {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.task-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.task-time {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #374151;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-container {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-small {
+    max-width: 420px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-title h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #1e293b;
+}
+
+.modal-icon {
+    font-size: 1.25rem;
+}
+
+.modal-icon.warning {
+    color: #f59e0b;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.warning-message p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.95rem;
+    color: #374151;
+}
+
+.warning-message .warning-note {
+    color: #dc2626;
+    font-size: 0.875rem;
 }
 
 @keyframes slideDown {
@@ -291,6 +1115,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .info-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .form-group {
+        width: 100%;
+    }
+    
+    .form-select {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .task-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .task-actions {
+        justify-content: space-between;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
     }
 }
 </style>
