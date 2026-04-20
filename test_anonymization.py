@@ -3,7 +3,7 @@
 测试 SQL 匿名化功能
 """
 
-from app.services.anonymization_service import anonymize_sql, SQLAnonymizer
+from app.services.anonymization_service import anonymize_sql, deanonymize_sql, remove_comments_and_empty_lines
 
 
 def test_basic_select():
@@ -193,6 +193,130 @@ ORDER BY sub.create_date DESC
     return True
 
 
+def test_deanonymize():
+    """测试反向匿名化"""
+    original_sql = """
+SELECT user_id, user_name, email, create_date
+FROM users
+WHERE create_date >= '2024-01-01'
+"""
+    
+    print("\n" + "=" * 60)
+    print("测试 6: 反向匿名化")
+    print("=" * 60)
+    
+    anonymized_sql, mapping = anonymize_sql(original_sql, exclude_list=['date', 'time'])
+    
+    print("原始 SQL:")
+    print(original_sql)
+    print("\n匿名化后:")
+    print(anonymized_sql)
+    print("\n映射表:")
+    print(mapping)
+    
+    deanonymized_sql = deanonymize_sql(anonymized_sql, mapping)
+    
+    print("\n反向匿名化后:")
+    print(deanonymized_sql)
+    
+    assert 'users' in deanonymized_sql
+    assert 'user_id' in deanonymized_sql
+    assert 'user_name' in deanonymized_sql
+    assert 'email' in deanonymized_sql
+    assert 'create_date' in deanonymized_sql
+    
+    print("\n✓ 测试 6 通过!")
+    return True
+
+
+def test_remove_comments():
+    """测试删除注释和空行"""
+    test_sql = """-- 这是一个行注释
+SELECT user_id, user_name  -- 这是行尾注释
+FROM users
+/* 这是块注释 */
+WHERE status = 1
+-- 另一个行注释
+ORDER BY user_id;
+"""
+    
+    print("\n" + "=" * 60)
+    print("测试 7: 删除注释和空行")
+    print("=" * 60)
+    print("原始 SQL:")
+    print(test_sql)
+    
+    cleaned_sql = remove_comments_and_empty_lines(test_sql)
+    
+    print("\n清理后:")
+    print(cleaned_sql)
+    
+    assert '-- 这是一个行注释' not in cleaned_sql
+    assert '-- 这是行尾注释' not in cleaned_sql
+    assert '/* 这是块注释 */' not in cleaned_sql
+    assert '-- 另一个行注释' not in cleaned_sql
+    
+    assert 'SELECT user_id, user_name' in cleaned_sql
+    assert 'FROM users' in cleaned_sql
+    assert 'WHERE status = 1' in cleaned_sql
+    assert 'ORDER BY user_id' in cleaned_sql
+    
+    print("\n✓ 测试 7 通过!")
+    return True
+
+
+def test_complete_flow():
+    """测试完整的正向-反向匿名化流程"""
+    original_sql = """
+-- 查询用户信息
+SELECT 
+    u.user_id,
+    u.user_name,
+    o.order_id,
+    o.order_date,
+    p.product_name
+FROM users u
+INNER JOIN orders o ON u.user_id = o.user_id
+INNER JOIN products p ON od.product_id = p.product_id
+WHERE o.order_date >= '2024-01-01'
+  AND o.status = 'completed'
+"""
+    
+    print("\n" + "=" * 60)
+    print("测试 8: 完整的正向-反向匿名化流程")
+    print("=" * 60)
+    print("原始 SQL:")
+    print(original_sql)
+    
+    anonymized_sql, mapping = anonymize_sql(
+        original_sql, 
+        exclude_list=['date', 'time'],
+        remove_comments=True
+    )
+    
+    print("\n匿名化后 (已删除注释):")
+    print(anonymized_sql)
+    print("\n编码字典:")
+    print(mapping)
+    
+    deanonymized_sql = deanonymize_sql(anonymized_sql, mapping)
+    
+    print("\n反向匿名化后:")
+    print(deanonymized_sql)
+    
+    assert 'users' in deanonymized_sql
+    assert 'orders' in deanonymized_sql
+    assert 'products' in deanonymized_sql
+    assert 'user_id' in deanonymized_sql
+    assert 'user_name' in deanonymized_sql
+    assert 'order_id' in deanonymized_sql
+    assert 'order_date' in deanonymized_sql
+    assert 'product_name' in deanonymized_sql
+    
+    print("\n✓ 测试 8 通过!")
+    return True
+
+
 def run_all_tests():
     """运行所有测试"""
     print("开始运行所有测试...")
@@ -204,6 +328,9 @@ def run_all_tests():
         ("带日期格式函数的查询", test_date_format_functions),
         ("排除列表功能", test_exclude_list),
         ("子查询", test_subquery),
+        ("反向匿名化", test_deanonymize),
+        ("删除注释和空行", test_remove_comments),
+        ("完整的正向-反向匿名化流程", test_complete_flow),
     ]
     
     passed = 0
@@ -215,6 +342,8 @@ def run_all_tests():
             passed += 1
         except Exception as e:
             print(f"\n✗ 测试 {name} 失败: {e}")
+            import traceback
+            traceback.print_exc()
             failed += 1
     
     print("\n" + "=" * 60)

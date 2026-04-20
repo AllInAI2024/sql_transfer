@@ -114,6 +114,31 @@
         </div>
     </div>
 
+    <!-- 匿名化配置 -->
+    <div class="config-section">
+        <h3>匿名化配置</h3>
+        <div class="info-content">
+            <p>匿名化功能用于对 SQL 脚本中的表名和字段名进行脱敏处理。配置排除列表可以指定不需要匿名化的字符串。</p>
+            <h4>配置说明</h4>
+            <ul>
+                <li><strong>排除列表</strong>：逗号分隔的字符串列表，包含这些字符串的表名或字段名不会被匿名化</li>
+                <li><strong>大小写不敏感</strong>：判断时不区分大小写</li>
+                <li><strong>示例</strong>：如果排除列表包含 "date"，则 "create_date", "update_time" 等名称不会被匿名化</li>
+            </ul>
+        </div>
+        <div class="config-form">
+            <div class="form-group">
+                <label for="anonymization_exclude_list">排除列表</label>
+                <input type="text" id="anonymization_exclude_list" 
+                       value="{{ anonymization_exclude_list }}" 
+                       class="form-input"
+                       placeholder="例如: date,time,datetime,timestamp,port">
+                <p class="form-hint">逗号分隔的字符串列表，包含这些字符串的表名或字段名不会被匿名化</p>
+            </div>
+            <button class="btn btn-primary" id="btn_save_anonymization">保存匿名化配置</button>
+        </div>
+    </div>
+
     <!-- 其他配置 -->
     <div class="config-section">
         <h3>其他配置</h3>

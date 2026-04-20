@@ -842,12 +842,178 @@ class SQLAnonymizer:
         }
         
         return anonymized_sql, mapping
+    
+    def deanonymize(
+        self, 
+        sql: str, 
+        mapping: Dict[str, Dict[str, str]]
+    ) -> str:
+        """
+        反向匿名化：根据编码字典将匿名化后的脚本还原为原始脚本
+        
+        Args:
+            sql: 匿名化后的 SQL 脚本
+            mapping: 编码字典，格式为 {"tables": {"table_001": "users"}, "fields": {"field_001": "user_id"}}
+        
+        Returns:
+            还原后的 SQL 脚本
+        """
+        if not mapping:
+            return sql
+        
+        table_mapping = mapping.get("tables", {})
+        field_mapping = mapping.get("fields", {})
+        
+        tokens = self._split_tokens(sql)
+        result = []
+        
+        table_names_set = set(table_mapping.keys())
+        field_names_set = set(field_mapping.keys())
+        
+        i = 0
+        while i < len(tokens):
+            token_type, token_value = tokens[i]
+            
+            if token_type == "STRING":
+                result.append(token_value)
+            
+            elif token_type == "IDENTIFIER":
+                if self._is_keyword(token_value):
+                    result.append(token_value)
+                else:
+                    token_clean = token_value.strip("`\"'")
+                    
+                    if "." in token_value and not token_value.startswith(".") and not token_value.endswith("."):
+                        parts = token_value.split(".")
+                        deanonymized_parts = []
+                        for part in parts:
+                            part_clean = part.strip("`\"'")
+                            
+                            if part_clean in table_mapping:
+                                deanonymized_parts.append(table_mapping[part_clean])
+                            elif part_clean in field_mapping:
+                                deanonymized_parts.append(field_mapping[part_clean])
+                            elif not self._is_keyword(part):
+                                if part_clean in table_names_set:
+                                    deanonymized_parts.append(table_mapping[part_clean])
+                                elif part_clean in field_names_set:
+                                    deanonymized_parts.append(field_mapping[part_clean])
+                                else:
+                                    deanonymized_parts.append(part)
+                            else:
+                                deanonymized_parts.append(part)
+                        result.append(".".join(deanonymized_parts))
+                    
+                    elif token_clean in table_mapping:
+                        result.append(table_mapping[token_clean])
+                    
+                    elif token_clean in field_mapping:
+                        result.append(field_mapping[token_clean])
+                    
+                    else:
+                        result.append(token_value)
+            else:
+                result.append(token_value)
+            
+            i += 1
+        
+        deanonymized_sql = "".join(result)
+        
+        return deanonymized_sql
+
+
+def remove_comments_and_empty_lines(sql: str) -> str:
+    """
+    从 SQL 脚本中删除注释和空行
+    
+    Args:
+        sql: 原始 SQL 脚本
+    
+    Returns:
+        清理后的 SQL 脚本
+    """
+    lines = sql.split('\n')
+    cleaned_lines = []
+    
+    in_block_comment = False
+    
+    for line in lines:
+        stripped_line = line.strip()
+        
+        if not stripped_line:
+            continue
+        
+        if in_block_comment:
+            if "*/" in line:
+                in_block_comment = False
+                _, after_comment = line.split("*/", 1)
+                if after_comment.strip():
+                    cleaned_lines.append(after_comment.rstrip())
+            continue
+        
+        while "--" in line:
+            idx = line.find("--")
+            if idx >= 0:
+                line = line[:idx]
+        
+        while "/*" in line:
+            idx = line.find("/*")
+            end_idx = line.find("*/", idx)
+            
+            if end_idx >= 0:
+                line = line[:idx] + line[end_idx + 2:]
+            else:
+                line = line[:idx]
+                in_block_comment = True
+                break
+        
+        stripped_line = line.strip()
+        if stripped_line:
+            cleaned_lines.append(line.rstrip())
+    
+    return '\n'.join(cleaned_lines)
 
 
 def anonymize_sql(
     sql: str,
     exclude_list: Optional[List[str]] = None,
-    dialect: str = "mysql"
+    dialect: str = "mysql",
+    remove_comments: bool = True
 ) -> Tuple[str, Dict[str, Dict[str, str]]]:
+    """
+    匿名化 SQL 脚本
+    
+    Args:
+        sql: 原始 SQL 脚本
+        exclude_list: 排除列表，包含这些字符串的表名或字段名不会被匿名化
+        dialect: 数据库方言
+        remove_comments: 是否删除注释和空行
+    
+    Returns:
+        (匿名化后的 SQL 脚本, 编码字典)
+    """
+    if remove_comments:
+        sql = remove_comments_and_empty_lines(sql)
+    
     anonymizer = SQLAnonymizer(exclude_list=exclude_list, dialect=dialect)
     return anonymizer.anonymize(sql)
+
+
+def deanonymize_sql(
+    sql: str,
+    mapping: Dict[str, Dict[str, str]],
+    dialect: str = "mysql"
+) -> str:
+    """
+    反向匿名化 SQL 脚本
+    
+    Args:
+        sql: 匿名化后的 SQL 脚本
+        mapping: 编码字典
+        dialect: 数据库方言
+    
+    Returns:
+        还原后的 SQL 脚本
+    """
+    anonymizer = SQLAnonymizer(dialect=dialect)
+    return anonymizer.deanonymize(sql, mapping)

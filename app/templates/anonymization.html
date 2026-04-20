@@ -4,108 +4,48 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>匿名化处理</h2>
-    <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
-</div>
-
-<div class="content-section">
-    <div class="config-section">
-        <h3>匿名化设置</h3>
-        <div class="config-form">
-            <div class="form-group">
-                <label for="dialect">数据库方言</label>
-                <select id="dialect" class="form-input">
-                    <option value="mysql" {% if default_dialect == 'mysql' %}selected{% endif %}>MySQL</option>
-                    <option value="dama" {% if default_dialect == 'dama' %}selected{% endif %}>达梦</option>
-                    <option value="postgresql" {% if default_dialect == 'postgresql' %}selected{% endif %}>PostgreSQL</option>
-                    <option value="oracle" {% if default_dialect == 'oracle' %}selected{% endif %}>ORACLE</option>
-                    <option value="odps" {% if default_dialect == 'odps' %}selected{% endif %}>ODPS</option>
-                </select>
-                <p class="form-hint">选择 SQL 脚本的数据库方言，用于识别关键词</p>
-            </div>
-            <div class="form-group">
-                <label for="exclude_list">排除列表</label>
-                <input type="text" id="exclude_list" class="form-input" 
-                       value="{{ default_exclude_list }}"
-                       placeholder="例如: date,time,datetime,port">
-                <p class="form-hint">逗号分隔的字符串列表，包含这些字符串的表名或字段名不会被匿名化（不区分大小写）</p>
-            </div>
+    <div class="header-with-action">
+        <div>
+            <h2>匿名化处理</h2>
+            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+        </div>
+        <div class="header-action">
+            <a href="/anonymization/test" class="btn btn-primary">
+                <span>▶</span> 匿名化测试
+            </a>
         </div>
     </div>
 </div>
 
 <div class="content-section">
-    <div class="two-column-layout">
-        <div class="column">
-            <h3>原始脚本</h3>
-            <div class="code-editor-placeholder">
-                <textarea id="original_sql" class="code-textarea" placeholder="请输入或粘贴需要匿名化的 SQL 脚本..."></textarea>
-            </div>
-            <div class="action-buttons">
-                <button id="btn_anonymize" class="btn btn-primary">执行匿名化</button>
-                <button id="btn_clear" class="btn btn-secondary">清空</button>
-            </div>
-        </div>
-        
-        <div class="column">
-            <h3>匿名化结果</h3>
-            <div class="code-result-placeholder">
-                <pre id="anonymized_sql" class="code-result">匿名化处理后的脚本将显示在这里...</pre>
-            </div>
-            <div class="action-buttons">
-                <button id="btn_copy" class="btn btn-secondary" disabled>复制结果</button>
-                <button id="btn_download" class="btn btn-secondary" disabled>下载</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="mapping_section" class="content-section" style="display: none;">
-    <h3>替换映射表</h3>
-    <div class="mapping-content">
-        <div class="mapping-column">
-            <h4>表名映射</h4>
-            <table id="table_mapping" class="data-table">
-                <thead>
-                    <tr>
-                        <th>匿名化名</th>
-                        <th>原名</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <div class="mapping-column">
-            <h4>字段名映射</h4>
-            <table id="field_mapping" class="data-table">
-                <thead>
-                    <tr>
-                        <th>匿名化名</th>
-                        <th>原名</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="info-section">
-    <h3>功能说明</h3>
-    <div class="info-content">
-        <h4>匿名化规则</h4>
-        <ul>
-            <li><strong>表名</strong>：自动识别并匿名化为 <code>table_001</code>, <code>table_002</code> 等格式</li>
-            <li><strong>字段名</strong>：自动识别并匿名化为 <code>field_001</code>, <code>field_002</code> 等格式</li>
-            <li><strong>SQL 关键词</strong>：所有 SQL 关键词保持不变，支持多种数据库方言</li>
-            <li><strong>特殊字符串</strong>：日期格式字符串（如 'yyyy-MM-dd', 'HH24:MI:SS'）保持不变</li>
-            <li><strong>排除列表</strong>：可配置不需要匿名化的字符串列表，包含这些字符串的名称将保持不变</li>
-        </ul>
-        <h4>示例</h4>
-        <div class="script-container">
-            <pre>-- 原始 SQL
+    <div class="info-section">
+        <h3>功能说明</h3>
+        <div class="info-content">
+            <h4>匿名化规则</h4>
+            <ul>
+                <li><strong>表名</strong>：自动识别并匿名化为 <code>table_001</code>, <code>table_002</code> 等格式</li>
+                <li><strong>字段名</strong>：自动识别并匿名化为 <code>field_001</code>, <code>field_002</code> 等格式</li>
+                <li><strong>SQL 关键词</strong>：所有 SQL 关键词保持不变，支持多种数据库方言</li>
+                <li><strong>特殊字符串</strong>：日期格式字符串（如 'yyyy-MM-dd', 'HH24:MI:SS'）保持不变</li>
+                <li><strong>排除列表</strong>：可在<a href="/configuration/">配置页面</a>设置不需要匿名化的字符串列表</li>
+            </ul>
+            
+            <h4>双向匿名化</h4>
+            <p>系统支持正向匿名化和反向匿名化，两次操作均采用同一个编码字典：</p>
+            <ul>
+                <li><strong>正向匿名化</strong>：将原始脚本中的表名、字段名替换为无意义的标识符</li>
+                <li><strong>反向匿名化</strong>：根据编码字典将匿名化后的脚本还原为原始脚本</li>
+            </ul>
+            
+            <h4>额外功能</h4>
+            <ul>
+                <li><strong>删除空行</strong>：匿名化过程中自动删除脚本中的空行</li>
+                <li><strong>删除注释</strong>：匿名化过程中自动删除脚本中的注释（包括行内注释和块注释）</li>
+            </ul>
+            
+            <h4>示例</h4>
+            <div class="script-container">
+                <pre>-- 原始 SQL
 SELECT user_id, user_name, create_date 
 FROM users 
 WHERE create_date >= '2024-01-01'
@@ -115,318 +55,82 @@ WHERE create_date >= '2024-01-01'
 SELECT field_001, field_002, create_date 
 FROM table_001 
 WHERE create_date >= '2024-01-01'
-  AND status = 1</pre>
+  AND field_003 = 1</pre>
+            </div>
+            <p class="form-hint">注意：示例中 <code>create_date</code> 没有被匿名化，因为它包含了排除列表中的 "date" 字符串</p>
         </div>
-        <p class="form-hint">注意：示例中 <code>create_date</code> 没有被匿名化，因为它包含了排除列表中的 "date" 字符串</p>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="config-section">
+        <h3>配置入口</h3>
+        <div class="info-content">
+            <p>匿名化相关配置（如排除列表）请在<a href="/configuration/">配置页面</a>中进行设置。</p>
+            <div class="config-form">
+                <div class="form-group">
+                    <a href="/configuration/" class="btn btn-secondary">
+                        前往配置页面
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const originalSqlEl = document.getElementById('original_sql');
-    const anonymizedSqlEl = document.getElementById('anonymized_sql');
-    const dialectEl = document.getElementById('dialect');
-    const excludeListEl = document.getElementById('exclude_list');
-    const btnAnonymize = document.getElementById('btn_anonymize');
-    const btnClear = document.getElementById('btn_clear');
-    const btnCopy = document.getElementById('btn_copy');
-    const btnDownload = document.getElementById('btn_download');
-    const mappingSection = document.getElementById('mapping_section');
-    const tableMappingEl = document.getElementById('table_mapping').querySelector('tbody');
-    const fieldMappingEl = document.getElementById('field_mapping').querySelector('tbody');
-    
-    let currentMapping = null;
-    
-    btnAnonymize.addEventListener('click', async function() {
-        const sql = originalSqlEl.value.trim();
-        
-        if (!sql) {
-            showToast('请输入需要匿名化的 SQL 脚本', 'warning');
-            return;
-        }
-        
-        btnAnonymize.disabled = true;
-        btnAnonymize.innerHTML = '<span class="loading-spinner" style="display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;"></span>处理中...';
-        
-        try {
-            const response = await fetch('/anonymization/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sql: sql,
-                    dialect: dialectEl.value,
-                    exclude_list: excludeListEl.value
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                anonymizedSqlEl.textContent = result.anonymized_sql;
-                currentMapping = result.mapping;
-                
-                renderMapping(result.mapping);
-                
-                btnCopy.disabled = false;
-                btnDownload.disabled = false;
-                mappingSection.style.display = 'block';
-                
-                showToast('匿名化处理完成', 'success');
-            } else {
-                anonymizedSqlEl.textContent = '错误: ' + result.error;
-                showToast('匿名化处理失败: ' + result.error, 'error');
-            }
-        } catch (error) {
-            anonymizedSqlEl.textContent = '错误: ' + error.message;
-            showToast('请求失败: ' + error.message, 'error');
-        } finally {
-            btnAnonymize.disabled = false;
-            btnAnonymize.textContent = '执行匿名化';
-        }
-    });
-    
-    btnClear.addEventListener('click', function() {
-        originalSqlEl.value = '';
-        anonymizedSqlEl.textContent = '匿名化处理后的脚本将显示在这里...';
-        mappingSection.style.display = 'none';
-        btnCopy.disabled = true;
-        btnDownload.disabled = true;
-        currentMapping = null;
-    });
-    
-    btnCopy.addEventListener('click', function() {
-        const text = anonymizedSqlEl.textContent;
-        if (text && text !== '匿名化处理后的脚本将显示在这里...') {
-            navigator.clipboard.writeText(text).then(function() {
-                showToast('已复制到剪贴板', 'success');
-            }).catch(function() {
-                showToast('复制失败，请手动复制', 'error');
-            });
-        }
-    });
-    
-    btnDownload.addEventListener('click', function() {
-        const text = anonymizedSqlEl.textContent;
-        if (text && text !== '匿名化处理后的脚本将显示在这里...') {
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'anonymized_sql_' + new Date().toISOString().slice(0, 10) + '.sql';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('下载已开始', 'success');
-        }
-    });
-    
-    function renderMapping(mapping) {
-        tableMappingEl.innerHTML = '';
-        fieldMappingEl.innerHTML = '';
-        
-        if (mapping.tables && Object.keys(mapping.tables).length > 0) {
-            for (const [alias, original] of Object.entries(mapping.tables)) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td><code>${alias}</code></td><td><code>${original}</code></td>`;
-                tableMappingEl.appendChild(row);
-            }
-        } else {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="2" class="empty-message">无表名替换</td>';
-            tableMappingEl.appendChild(row);
-        }
-        
-        if (mapping.fields && Object.keys(mapping.fields).length > 0) {
-            for (const [alias, original] of Object.entries(mapping.fields)) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td><code>${alias}</code></td><td><code>${original}</code></td>`;
-                fieldMappingEl.appendChild(row);
-            }
-        } else {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="2" class="empty-message">无字段名替换</td>';
-            fieldMappingEl.appendChild(row);
-        }
-    }
-    
-    function showToast(message, type = 'info') {
-        const container = document.querySelector('.toast-container') || createToastContainer();
-        
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.style.animation = 'none';
-        toast.offsetHeight;
-        toast.style.animation = '';
-        
-        const icons = {
-            success: '✓',
-            error: '✗',
-            warning: '⚠',
-            info: 'ℹ'
-        };
-        
-        toast.innerHTML = `
-            <span class="toast-icon">${icons[type] || icons.info}</span>
-            <span class="toast-message">${message}</span>
-        `;
-        
-        container.appendChild(toast);
-        
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, 3000);
-    }
-    
-    function createToastContainer() {
-        const container = document.createElement('div');
-        container.className = 'toast-container';
-        document.body.appendChild(container);
-        return container;
-    }
-});
-</script>
-
+{% block extra_css %}
 <style>
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
-.mapping-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+.header-action {
+    margin-top: 0.5rem;
 }
 
-.mapping-column {
+.header-action .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+}
+
+.header-action .btn span {
+    font-size: 1.1rem;
+}
+
+.config-section h3 {
+    margin-bottom: 1rem;
+    color: #2c3e50;
+    font-size: 1.25rem;
+}
+
+.config-section .info-content {
     background-color: #f8f9fa;
     border-radius: 8px;
     padding: 1.5rem;
 }
 
-.mapping-column h4 {
+.config-section .info-content p {
     margin-bottom: 1rem;
-    color: #2c3e50;
-    font-size: 1rem;
+    color: #64748b;
 }
 
-.mapping-column .data-table {
-    font-size: 0.85rem;
+.config-section .info-content a {
+    color: #3b82f6;
+    text-decoration: underline;
 }
 
-.mapping-column .data-table td {
-    padding: 0.75rem 1rem;
-}
-
-.mapping-column .data-table code {
-    background-color: #e2e8f0;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-@media (max-width: 768px) {
-    .mapping-content {
-        grid-template-columns: 1fr;
-    }
-}
-
-.toast-container {
-    position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
-    z-index: 3000;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.toast {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 1.25rem;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    border-left: 4px solid;
-    transform: translateX(120%);
-    opacity: 0;
-    transition: all 0.3s ease;
-    min-width: 280px;
-}
-
-.toast.show {
-    transform: translateX(0);
-    opacity: 1;
-}
-
-.toast-success {
-    border-left-color: #22c55e;
-}
-
-.toast-error {
-    border-left-color: #ef4444;
-}
-
-.toast-warning {
-    border-left-color: #f59e0b;
-}
-
-.toast-info {
-    border-left-color: #3b82f6;
-}
-
-.toast-icon {
-    font-size: 1.25rem;
-    flex-shrink: 0;
-}
-
-.toast-message {
-    flex: 1;
-    font-size: 0.9rem;
-    color: #334155;
-    font-weight: 500;
-}
-
-.config-section {
-    background-color: #fff;
-    border-radius: 8px;
-}
-
-.config-section h3 {
-    margin-bottom: 1.5rem;
-    color: #2c3e50;
-    font-size: 1.25rem;
-    border-bottom: 2px solid #ecf0f1;
-    padding-bottom: 0.75rem;
+.config-section .info-content a:hover {
+    color: #2563eb;
 }
 
 .config-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-    .config-form {
-        grid-template-columns: 1fr;
-    }
-}
-
-.loading-spinner {
-    animation: spin 0.8s linear infinite;
+    margin-top: 1rem;
 }
 </style>
 {% endblock %}
