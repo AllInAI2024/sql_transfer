@@ -1,42 +1,91 @@
 {% extends "base.html" %}
 
-{% block title %}可视化脚本 - {{ app_name }}{% endblock %}
+{% block title %}中间表 - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>可视化脚本管理</h2>
-    <p>管理和查看可视化脚本，包括脚本的导入、编辑和删除。</p>
+    <h2>中间表管理</h2>
+    <p>管理中间表脚本和可视化脚本，建立它们之间的关联关系，为后续的脚本转换做准备。</p>
+</div>
+
+<div class="info-section">
+    <h3>概念说明</h3>
+    <div class="info-content">
+        <div class="two-column-layout">
+            <div class="column">
+                <h4>📋 中间表脚本</h4>
+                <ul>
+                    <li>定义如何从<strong>原始表</strong>构建<strong>中间表</strong>的 SQL 脚本</li>
+                    <li><strong>独立存在</strong>，与任务无关</li>
+                    <li>中间表名<strong>全局唯一</strong></li>
+                    <li>可以被多个可视化脚本复用</li>
+                    <li>支持多种数据库方言（MySQL、达梦、PostgreSQL、ORACLE、ODPS 等）</li>
+                </ul>
+            </div>
+            <div class="column">
+                <h4>📊 可视化脚本</h4>
+                <ul>
+                    <li>查询<strong>中间表</strong>的 SQL 脚本</li>
+                    <li>用于报表、可视化等业务场景</li>
+                    <li>属于某个<strong>任务</strong>（任务创建时指定方言）</li>
+                    <li>通过 <code>intermediate_table_names</code> 字段关联中间表</li>
+                    <li>一个可视化脚本可关联多个中间表</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="action-bar">
-    <button class="btn btn-primary">新建脚本</button>
-    <button class="btn btn-secondary">导入脚本</button>
-    <button class="btn btn-secondary">批量操作</button>
-</div>
-
-<div class="content-section">
-    <div class="placeholder-message">
-        <div class="placeholder-icon">📊</div>
-        <h3>可视化脚本管理</h3>
-        <p>此页面用于管理可视化脚本，您可以：</p>
-        <ul>
-            <li>创建新的可视化脚本</li>
-            <li>导入已有的可视化脚本</li>
-            <li>查看和编辑脚本内容</li>
-            <li>管理脚本与中间表的关联关系</li>
-        </ul>
-        <p class="placeholder-note">功能开发中，敬请期待...</p>
-    </div>
+    <button class="btn btn-primary">新建中间表脚本</button>
+    <button class="btn btn-secondary">导入中间表脚本</button>
+    <button class="btn btn-secondary">新建可视化脚本</button>
 </div>
 
 <div class="tabs-section">
     <div class="tabs">
-        <button class="tab-btn active">脚本列表</button>
-        <button class="tab-btn">中间表关联</button>
-        <button class="tab-btn">历史记录</button>
+        <button class="tab-btn active">中间表脚本</button>
+        <button class="tab-btn">可视化脚本</button>
+        <button class="tab-btn">关联管理</button>
     </div>
     <div class="tab-content">
-        <p>脚本列表内容区域</p>
+        <div class="content-section">
+            <div class="placeholder-message">
+                <div class="placeholder-icon">📋</div>
+                <h3>中间表脚本管理</h3>
+                <p>此页面用于管理中间表脚本，您可以：</p>
+                <ul>
+                    <li>创建新的中间表脚本（定义如何从原始表构建中间表）</li>
+                    <li>导入已有的中间表脚本</li>
+                    <li>查看和编辑脚本内容</li>
+                    <li>管理脚本的方言信息</li>
+                </ul>
+                <p class="placeholder-note">功能开发中，敬请期待...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="info-section">
+    <h3>工作流程</h3>
+    <div class="info-content">
+        <ol>
+            <li>
+                <strong>创建中间表脚本</strong>：定义如何从原始表构建中间表
+            </li>
+            <li>
+                <strong>创建可视化脚本</strong>：定义查询中间表的业务逻辑
+            </li>
+            <li>
+                <strong>建立关联</strong>：将可视化脚本与所需的中间表脚本关联
+            </li>
+            <li>
+                <strong>创建转换任务</strong>：在转换页面创建任务，指定三个脚本的方言
+            </li>
+            <li>
+                <strong>执行转换</strong>：AI 智能分析并生成直接查询原始表的新脚本
+            </li>
+        </ol>
     </div>
 </div>
 {% endblock %}
