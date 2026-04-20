@@ -11,9 +11,9 @@ router_conversion = APIRouter()
 @router_conversion.get("/", response_class=HTMLResponse)
 async def conversion_page(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="conversion.html",
         context={
-            "request": request,
             "title": "脚本转换",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,

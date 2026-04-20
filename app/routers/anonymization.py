@@ -11,9 +11,9 @@ router_anonymization = APIRouter()
 @router_anonymization.get("/", response_class=HTMLResponse)
 async def anonymization_page(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="anonymization.html",
         context={
-            "request": request,
             "title": "匿名化",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,

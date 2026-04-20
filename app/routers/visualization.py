@@ -11,9 +11,9 @@ router_visualization = APIRouter()
 @router_visualization.get("/", response_class=HTMLResponse)
 async def visualization_scripts(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="visualization_scripts.html",
         context={
-            "request": request,
             "title": "可视化脚本",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,

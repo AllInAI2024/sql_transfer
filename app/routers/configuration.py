@@ -11,9 +11,9 @@ router_configuration = APIRouter()
 @router_configuration.get("/", response_class=HTMLResponse)
 async def configuration_page(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="configuration.html",
         context={
-            "request": request,
             "title": "配置",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,
