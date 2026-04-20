@@ -1,25 +1,31 @@
 -- SQL脚本转换工具数据库初始化脚本
 -- 数据库类型: SQLite
 -- 创建日期: 2026-04-19
--- 版本: 3.0
+-- 版本: 4.0
 
 -- ============================================
 -- 数据库设计思路
 -- ============================================
 -- 
--- 1. 任务表 (tasks)
+-- 1. 方言表 (dialects)
+--    - 存储支持的数据库方言
+--    - 支持的方言包括：MySQL、达梦、PostgreSQL、ORACLE、ODPS等
+--    - 任务表通过外键关联此表，指定三个脚本的方言
+-- 
+-- 2. 任务表 (tasks)
 --    - 任务是针对可视化脚本的转换工作容器
 --    - 每个任务包含一个可视化脚本
 --    - 任务只与可视化脚本相关，与中间表无关
 --    - 删除任务时，级联删除关联的可视化脚本
+--    - 新增三个方言字段：中间表脚本方言、可视化脚本方言、转换后脚本方言
 -- 
--- 2. 中间脚本表 (intermediate_scripts)
+-- 3. 中间脚本表 (intermediate_scripts)
 --    - 中间表脚本定义了如何从 ODPS 原始表构建达梦数据库的中间表
 --    - 中间表是底层逻辑，独立存在，与任务无关
 --    - intermediate_table_name 全局唯一，确保系统中不会有重复的中间表名
 --    - 与任务表无关联，删除任务时不会影响中间表
 -- 
--- 3. 可视化脚本表 (visualization_scripts)
+-- 4. 可视化脚本表 (visualization_scripts)
 --    - 可视化脚本是查询达梦数据库中间表的 SQL 脚本
 --    - 每个可视化脚本属于一个任务
 --    - 每个可视化脚本需要关联一个或多个中间表（通过 intermediate_table_names 字段，逗号分隔）
@@ -27,7 +33,7 @@
 --    - 添加唯一约束：同一个任务下，脚本名必须唯一
 --    - 与任务表通过 task_id 建立外键关联
 -- 
--- 4. 配置表 (configs)
+-- 5. 配置表 (configs)
 --    - 使用键值对方式存储系统配置
 --    - 灵活支持后续新增配置项
 --    - 支持配置分类和敏感配置标记
@@ -37,23 +43,58 @@
 
 
 -- ============================================
+-- 方言表 (dialects)
+-- 存储支持的数据库方言
+-- 
+-- 设计说明：
+-- - 支持的数据库方言包括：MySQL、达梦、PostgreSQL、ORACLE、ODPS等
+-- - 任务表通过外键关联此表，灵活指定三个脚本的方言
+-- - 这样设计使项目具备扩展性和实用性
+-- ============================================
+CREATE TABLE IF NOT EXISTS dialects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_enabled INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 为方言表创建索引
+CREATE INDEX IF NOT EXISTS idx_dialects_name ON dialects(name);
+CREATE INDEX IF NOT EXISTS idx_dialects_enabled ON dialects(is_enabled);
+
+
+-- ============================================
 -- 任务表 (tasks)
 -- 转换之前先创建任务，每个任务针对一个可视化脚本
 -- 
 -- 设计说明：
 -- - 任务只与可视化脚本相关，与中间表无关
 -- - 删除任务时，级联删除关联的可视化脚本
+-- - 新增三个方言字段，支持灵活指定脚本方言
 -- ============================================
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    intermediate_dialect_id INTEGER,
+    visualization_dialect_id INTEGER,
+    converted_dialect_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (intermediate_dialect_id) REFERENCES dialects(id),
+    FOREIGN KEY (visualization_dialect_id) REFERENCES dialects(id),
+    FOREIGN KEY (converted_dialect_id) REFERENCES dialects(id)
 );
 
 -- 为任务表创建索引
 CREATE INDEX IF NOT EXISTS idx_tasks_name ON tasks(name);
+CREATE INDEX IF NOT EXISTS idx_tasks_intermediate_dialect ON tasks(intermediate_dialect_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_visualization_dialect ON tasks(visualization_dialect_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_converted_dialect ON tasks(converted_dialect_id);
 
 
 -- ============================================
@@ -155,6 +196,13 @@ CREATE INDEX IF NOT EXISTS idx_configs_category ON configs(category);
 -- 创建触发器来自动更新 updated_at 字段
 -- ============================================
 
+-- 方言表更新触发器
+CREATE TRIGGER IF NOT EXISTS update_dialects_updated_at 
+AFTER UPDATE ON dialects
+BEGIN
+    UPDATE dialects SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
 -- 任务表更新触发器
 CREATE TRIGGER IF NOT EXISTS update_tasks_updated_at 
 AFTER UPDATE ON tasks
@@ -182,6 +230,31 @@ AFTER UPDATE ON configs
 BEGIN
     UPDATE configs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
+
+
+-- ============================================
+-- 插入默认方言数据
+-- ============================================
+
+-- MySQL
+INSERT OR IGNORE INTO dialects (name, display_name, description, is_enabled, sort_order) 
+VALUES ('mysql', 'MySQL', 'MySQL 数据库方言', 1, 1);
+
+-- 达梦
+INSERT OR IGNORE INTO dialects (name, display_name, description, is_enabled, sort_order) 
+VALUES ('dameng', '达梦', '达梦数据库方言', 1, 2);
+
+-- PostgreSQL
+INSERT OR IGNORE INTO dialects (name, display_name, description, is_enabled, sort_order) 
+VALUES ('postgresql', 'PostgreSQL', 'PostgreSQL 数据库方言', 1, 3);
+
+-- ORACLE
+INSERT OR IGNORE INTO dialects (name, display_name, description, is_enabled, sort_order) 
+VALUES ('oracle', 'ORACLE', 'Oracle 数据库方言', 1, 4);
+
+-- ODPS (MaxCompute)
+INSERT OR IGNORE INTO dialects (name, display_name, description, is_enabled, sort_order) 
+VALUES ('odps', 'ODPS', '阿里云 ODPS (MaxCompute) 数据库方言', 1, 5);
 
 
 -- ============================================
@@ -243,10 +316,12 @@ VALUES (
 -- 数据库初始化完成
 -- ============================================
 PRINT '数据库初始化完成！';
-PRINT '表结构：tasks, intermediate_scripts, visualization_scripts, configs';
+PRINT '表结构：dialects, tasks, intermediate_scripts, visualization_scripts, configs';
 PRINT '';
 PRINT '重要说明：';
-PRINT '  - tasks（任务表）只与 visualization_scripts 关联';
+PRINT '  - dialects（方言表）存储支持的数据库方言';
+PRINT '  - tasks（任务表）通过三个方言字段关联方言表';
+PRINT '  - 支持的方言：MySQL、达梦、PostgreSQL、ORACLE、ODPS';
 PRINT '  - intermediate_scripts（中间脚本表）是独立存在的，与任务无关';
 PRINT '  - 删除任务时不会影响中间表';
 PRINT '  - 中间表名全局唯一';

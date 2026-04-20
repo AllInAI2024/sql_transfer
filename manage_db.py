@@ -4,13 +4,14 @@
 用于初始化 SQLite 数据库、清除数据和重置数据库
 
 使用方法：
-    python manage_db.py init      # 初始化数据库（创建表结构，插入默认配置）
+    python manage_db.py init      # 初始化数据库（创建表结构，插入默认配置和方言）
     python manage_db.py clear     # 清除所有数据（保留表结构）
     python manage_db.py reset     # 重置数据库（删除所有表并重新创建）
     python manage_db.py status    # 查看数据库状态
 
 表关系说明：
-    - tasks（任务表）只与 visualization_scripts 关联
+    - dialects（方言表）存储支持的数据库方言
+    - tasks（任务表）通过三个方言字段关联 dialects
     - visualization_scripts（可视化脚本表）依赖于 tasks（外键）
     - intermediate_scripts（中间脚本表）独立存在，与任务无关
     - configs（配置表）独立存在
@@ -27,13 +28,101 @@ from sqlalchemy import text
 
 from app.config import get_settings
 from app.database import Base, engine, SessionLocal
-from app.models import Task, IntermediateScript, VisualizationScript, Config
+from app.models import Dialect, Task, IntermediateScript, VisualizationScript, Config
+
+
+def get_default_dialects():
+    """
+    获取默认方言列表
+    支持的方言：MySQL、达梦、PostgreSQL、ORACLE、ODPS
+    """
+    return [
+        Dialect(
+            name='mysql',
+            display_name='MySQL',
+            description='MySQL 数据库方言',
+            is_enabled=True,
+            sort_order=1
+        ),
+        Dialect(
+            name='dameng',
+            display_name='达梦',
+            description='达梦数据库方言',
+            is_enabled=True,
+            sort_order=2
+        ),
+        Dialect(
+            name='postgresql',
+            display_name='PostgreSQL',
+            description='PostgreSQL 数据库方言',
+            is_enabled=True,
+            sort_order=3
+        ),
+        Dialect(
+            name='oracle',
+            display_name='ORACLE',
+            description='Oracle 数据库方言',
+            is_enabled=True,
+            sort_order=4
+        ),
+        Dialect(
+            name='odps',
+            display_name='ODPS',
+            description='阿里云 ODPS (MaxCompute) 数据库方言',
+            is_enabled=True,
+            sort_order=5
+        ),
+    ]
+
+
+def get_default_configs():
+    """
+    获取默认配置列表
+    """
+    return [
+        Config(
+            config_key='llm.api_key',
+            config_value='',
+            description='OpenAI 兼容 API 的访问密钥',
+            category='llm',
+            is_sensitive=True
+        ),
+        Config(
+            config_key='llm.api_base',
+            config_value='',
+            description='API 基础地址（可选，用于兼容其他 API 服务）',
+            category='llm',
+            is_sensitive=False
+        ),
+        Config(
+            config_key='llm.model_name',
+            config_value='gpt-3.5-turbo',
+            description='使用的模型名称',
+            category='llm',
+            is_sensitive=False
+        ),
+        Config(
+            config_key='llm.temperature',
+            config_value='0.7',
+            description='采样温度（0.0-2.0，越低越确定，越高越随机）',
+            category='llm',
+            is_sensitive=False
+        ),
+        Config(
+            config_key='llm.max_tokens',
+            config_value='4096',
+            description='最大生成 token 数',
+            category='llm',
+            is_sensitive=False
+        ),
+    ]
 
 
 def init_db():
     """
     初始化数据库
     - 创建所有表结构
+    - 插入默认方言数据
     - 插入默认配置数据
     """
     print("=" * 50)
@@ -48,57 +137,29 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     print("✓ 表结构创建完成")
     
-    # 插入默认配置
-    print("\n插入默认配置数据...")
     db = SessionLocal()
     try:
-        # 检查是否已有配置
+        # 插入默认方言
+        print("\n插入默认方言数据...")
+        existing_dialect = db.query(Dialect).filter(Dialect.name == 'mysql').first()
+        if existing_dialect:
+            print("  方言数据已存在，跳过插入")
+        else:
+            default_dialects = get_default_dialects()
+            for dialect in default_dialects:
+                db.add(dialect)
+            db.commit()
+            print("✓ 默认方言数据插入完成")
+        
+        # 插入默认配置
+        print("\n插入默认配置数据...")
         existing_config = db.query(Config).filter(Config.config_key == 'llm.model_name').first()
         if existing_config:
             print("  配置数据已存在，跳过插入")
         else:
-            # LLM 默认配置
-            default_configs = [
-                Config(
-                    config_key='llm.api_key',
-                    config_value='',
-                    description='OpenAI 兼容 API 的访问密钥',
-                    category='llm',
-                    is_sensitive=True
-                ),
-                Config(
-                    config_key='llm.api_base',
-                    config_value='',
-                    description='API 基础地址（可选，用于兼容其他 API 服务）',
-                    category='llm',
-                    is_sensitive=False
-                ),
-                Config(
-                    config_key='llm.model_name',
-                    config_value='gpt-3.5-turbo',
-                    description='使用的模型名称',
-                    category='llm',
-                    is_sensitive=False
-                ),
-                Config(
-                    config_key='llm.temperature',
-                    config_value='0.7',
-                    description='采样温度（0.0-2.0，越低越确定，越高越随机）',
-                    category='llm',
-                    is_sensitive=False
-                ),
-                Config(
-                    config_key='llm.max_tokens',
-                    config_value='4096',
-                    description='最大生成 token 数',
-                    category='llm',
-                    is_sensitive=False
-                ),
-            ]
-            
+            default_configs = get_default_configs()
             for config in default_configs:
                 db.add(config)
-            
             db.commit()
             print("✓ 默认配置数据插入完成")
         
@@ -111,7 +172,9 @@ def init_db():
         
         # 显示重要说明
         print("\n📌 重要说明：")
-        print("   - tasks（任务表）只与 visualization_scripts 关联")
+        print("   - dialects（方言表）存储支持的数据库方言")
+        print("   - tasks（任务表）通过三个方言字段关联方言表")
+        print("   - 支持的方言：MySQL、达梦、PostgreSQL、ORACLE、ODPS")
         print("   - intermediate_scripts（中间脚本表）是独立存在的，与任务无关")
         print("   - 删除任务时不会影响中间表")
         print("   - 中间表名全局唯一")
@@ -132,9 +195,10 @@ def clear_data():
     - 重置自增 ID
     
     注意：
-    - visualization_scripts 依赖于 tasks（外键），需要先清除
-    - intermediate_scripts 独立存在，与任务无关
-    - configs 独立存在
+    - 清除顺序需要考虑外键约束
+    - visualization_scripts 依赖 tasks
+    - tasks 依赖 dialects（三个外键字段）
+    - intermediate_scripts 和 configs 独立存在
     """
     print("=" * 50)
     print("开始清除数据库数据...")
@@ -148,13 +212,15 @@ def clear_data():
     db = SessionLocal()
     try:
         # 清除数据的顺序（考虑外键约束）
-        # visualization_scripts 依赖 tasks，所以先清除
-        # intermediate_scripts 和 configs 独立存在，可以在任何时候清除
+        # 1. visualization_scripts 依赖 tasks，先清除
+        # 2. tasks 依赖 dialects（三个外键），先清除
+        # 3. dialects、intermediate_scripts、configs 独立存在
         tables_order = [
             'visualization_scripts',  # 依赖 tasks，先清除
-            'tasks',                    # 被 visualization_scripts 依赖
+            'tasks',                    # 被 visualization_scripts 依赖，依赖 dialects
             'intermediate_scripts',     # 独立存在
-            'configs'                   # 独立存在
+            'configs',                  # 独立存在
+            'dialects'                  # 被 tasks 依赖
         ]
         
         print("\n清除表数据...")
@@ -187,7 +253,7 @@ def reset_db():
     重置数据库
     - 删除所有表
     - 重新创建表结构
-    - 插入默认配置
+    - 插入默认方言和配置
     """
     print("=" * 50)
     print("开始重置数据库...")
@@ -233,20 +299,27 @@ def show_status():
         
         # 显示表关系说明
         print("\n📋 表关系说明：")
-        print("   ┌─────────────────────────────────────────────────────┐")
-        print("   │  tasks (任务表)                                      │")
-        print("   │       │                                               │")
-        print("   │       └──►  visualization_scripts (可视化脚本表)    │")
-        print("   │                     │                                │")
-        print("   │                     └──►  (通过 intermediate_table_names 字段) │")
-        print("   │                                   │                   │")
-        print("   │                                   ▼                   │")
-        print("   │  intermediate_scripts (中间脚本表) ◄────────────────│")
-        print("   │  (独立存在，与任务无关)                              │")
-        print("   │                                                      │")
-        print("   │  configs (配置表)                                    │")
-        print("   │  (独立存在)                                          │")
-        print("   └─────────────────────────────────────────────────────┘")
+        print("   ┌─────────────────────────────────────────────────────────────┐")
+        print("   │  dialects (方言表)                                          │")
+        print("   │       ▲        ▲               ▲                            │")
+        print("   │       │        │               │                            │")
+        print("   │       └────────┼───────────────┘                            │")
+        print("   │                │                                            │")
+        print("   │  tasks (任务表) ◄──────────────────────────────────────────│")
+        print("   │  (intermediate_dialect_id, visualization_dialect_id,     │")
+        print("   │   converted_dialect_id 三个外键关联 dialects)             │")
+        print("   │       │                                                     │")
+        print("   │       └──►  visualization_scripts (可视化脚本表)           │")
+        print("   │                     │                                      │")
+        print("   │                     └──►  (通过 intermediate_table_names) │")
+        print("   │                                   │                         │")
+        print("   │                                   ▼                         │")
+        print("   │  intermediate_scripts (中间脚本表) ◄──────────────────────│")
+        print("   │  (独立存在，与任务无关)                                    │")
+        print("   │                                                            │")
+        print("   │  configs (配置表)                                          │")
+        print("   │  (独立存在)                                                │")
+        print("   └─────────────────────────────────────────────────────────────┘")
         
     except Exception as e:
         print(f"无法获取表信息: {e}")
@@ -300,9 +373,18 @@ def main():
   python manage_db.py status    查看数据库状态
 
 表关系：
-  - tasks 只与 visualization_scripts 关联
+  - dialects 存储支持的数据库方言
+  - tasks 通过三个外键关联 dialects
+  - visualization_scripts 依赖 tasks
   - intermediate_scripts 独立存在，与任务无关
   - configs 独立存在
+
+支持的方言：
+  - MySQL
+  - 达梦
+  - PostgreSQL
+  - ORACLE
+  - ODPS (MaxCompute)
         """
     )
     
