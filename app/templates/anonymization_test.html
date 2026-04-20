@@ -69,57 +69,16 @@
         <h4>1. 原始脚本</h4>
     </div>
     <div class="script-container">
-        <div class="search-toolbar" id="searchToolbarOriginal">
-            <div class="search-input-wrapper">
-                <input type="text" class="search-input" id="searchInputOriginal" placeholder="搜索脚本内容..." autocomplete="off">
-                <button class="search-clear-btn" id="searchClearBtnOriginal" title="清除搜索" style="display: none;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="search-controls">
-                <button class="search-nav-btn" id="searchPrevBtnOriginal" title="上一个" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="18 15 12 9 6 15"></polyline>
-                    </svg>
-                </button>
-                <button class="search-nav-btn" id="searchNextBtnOriginal" title="下一个" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                </button>
-                <span class="search-count" id="searchCountOriginal">0/0</span>
-            </div>
-            <button class="search-options-btn" id="searchOptionsBtnOriginal" title="搜索选项">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="search-options-panel" id="searchOptionsPanelOriginal" style="display: none;">
-            <label class="search-option">
-                <input type="checkbox" id="caseSensitiveOriginal">
-                <span>区分大小写</span>
-            </label>
-            <label class="search-option">
-                <input type="checkbox" id="wholeWordOriginal">
-                <span>全字匹配</span>
-            </label>
-            <label class="search-option">
-                <input type="checkbox" id="useRegexOriginal">
-                <span>正则表达式</span>
-            </label>
-        </div>
-        <div class="script-display-wrapper">
-            <pre class="script-display" id="originalScriptDisplay"></pre>
-        </div>
-        <textarea id="originalSqlInput" class="script-textarea" placeholder="请输入或粘贴需要匿名化的 SQL 脚本...">SELECT user_id, user_name, email, create_date
+        <div class="script-textarea-wrapper">
+            <textarea id="originalSqlInput" class="script-textarea" placeholder="请输入或粘贴需要匿名化的 SQL 脚本...">SELECT user_id, user_name, email, create_date
 FROM users
 WHERE create_date >= '2024-01-01'
   AND status = 1</textarea>
+        </div>
+        <button class="copy-btn" id="copyOriginalBtn">
+            <span class="copy-icon">📋</span>
+            复制
+        </button>
     </div>
     <div class="action-buttons" style="margin-top: 1rem;">
         <button id="btnAnonymize" class="btn btn-primary btn-lg">
@@ -316,14 +275,12 @@ WHERE create_date >= '2024-01-01'
     let currentAnonymizedSql = '';
     
     let searchData = {
-        original: { matches: [], currentIndex: -1, originalContent: '' },
         anonymized: { matches: [], currentIndex: -1, originalContent: '' },
         deanonymized: { matches: [], currentIndex: -1, originalContent: '' }
     };
 
     document.addEventListener('DOMContentLoaded', function() {
         const originalSqlInput = document.getElementById('originalSqlInput');
-        const originalScriptDisplay = document.getElementById('originalScriptDisplay');
         const anonymizedScriptDisplay = document.getElementById('anonymizedScriptDisplay');
         const deanonymizedScriptDisplay = document.getElementById('deanonymizedScriptDisplay');
         
@@ -335,6 +292,7 @@ WHERE create_date >= '2024-01-01'
         const btnClear = document.getElementById('btnClear');
         const btnDeanonymize = document.getElementById('btnDeanonymize');
         
+        const copyOriginalBtn = document.getElementById('copyOriginalBtn');
         const copyAnonymizedBtn = document.getElementById('copyAnonymizedBtn');
         const copyMappingBtn = document.getElementById('copyMappingBtn');
         const copyDeanonymizedBtn = document.getElementById('copyDeanonymizedBtn');
@@ -346,14 +304,6 @@ WHERE create_date >= '2024-01-01'
         const tableMappingBody = document.getElementById('tableMappingBody');
         const fieldMappingBody = document.getElementById('fieldMappingBody');
         const mappingJsonDisplay = document.getElementById('mappingJsonDisplay');
-        
-        function updateOriginalDisplay() {
-            originalScriptDisplay.textContent = originalSqlInput.value;
-            searchData.original.originalContent = originalSqlInput.value;
-        }
-        
-        originalSqlInput.addEventListener('input', updateOriginalDisplay);
-        updateOriginalDisplay();
         
         toggleInfoBtn.addEventListener('click', function() {
             const isVisible = collapsibleInfo.style.display !== 'none';
@@ -470,8 +420,6 @@ WHERE create_date >= '2024-01-01'
         
         btnClear.addEventListener('click', function() {
             originalSqlInput.value = '';
-            originalScriptDisplay.textContent = '';
-            searchData.original.originalContent = '';
             
             anonymizedScriptDisplay.textContent = '';
             deanonymizedScriptDisplay.textContent = '';
@@ -490,6 +438,17 @@ WHERE create_date >= '2024-01-01'
             currentAnonymizedSql = '';
             
             showToast('已清空', 'info');
+        });
+        
+        copyOriginalBtn.addEventListener('click', function() {
+            const text = originalSqlInput.value;
+            if (text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast('脚本已复制到剪贴板', 'success');
+                }).catch(function() {
+                    showToast('复制失败', 'error');
+                });
+            }
         });
         
         copyAnonymizedBtn.addEventListener('click', function() {
@@ -554,7 +513,6 @@ WHERE create_date >= '2024-01-01'
             }
         }
         
-        setupSearchHandlers('original');
         setupSearchHandlers('anonymized');
         setupSearchHandlers('deanonymized');
     });
@@ -1113,6 +1071,14 @@ WHERE create_date >= '2024-01-01'
     padding: 1rem;
 }
 
+.script-textarea-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border-radius: 6px;
+    padding: 0;
+}
+
 .script-display {
     margin: 0;
     font-family: 'Courier New', Courier, monospace;
@@ -1127,20 +1093,24 @@ WHERE create_date >= '2024-01-01'
     width: 100%;
     min-height: 150px;
     padding: 1rem;
-    border: 1px solid #d1d5db;
+    border: none;
     border-radius: 6px;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.875rem;
     line-height: 1.6;
     resize: vertical;
-    background: #fff;
-    margin-top: 0.75rem;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    margin: 0;
 }
 
 .script-textarea:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: inset 0 0 0 2px #3b82f6;
+}
+
+.script-textarea::placeholder {
+    color: #6e7681;
 }
 
 .copy-btn {
