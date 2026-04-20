@@ -4,67 +4,133 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>匿名化处理</h2>
-    <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+    <div class="header-with-action">
+        <div>
+            <h2>匿名化处理</h2>
+            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+        </div>
+        <div class="header-action">
+            <a href="/anonymization/test" class="btn btn-primary">
+                <span>▶</span> 匿名化测试
+            </a>
+        </div>
+    </div>
 </div>
 
 <div class="content-section">
-    <div class="two-column-layout">
-        <div class="column">
-            <h3>原始脚本</h3>
-            <div class="code-editor-placeholder">
-                <textarea class="code-textarea" placeholder="请输入或粘贴需要匿名化的 SQL 脚本..."></textarea>
+    <div class="info-section">
+        <h3>功能说明</h3>
+        <div class="info-content">
+            <h4>匿名化规则</h4>
+            <ul>
+                <li><strong>表名</strong>：自动识别并匿名化为 <code>table_001</code>, <code>table_002</code> 等格式</li>
+                <li><strong>字段名</strong>：自动识别并匿名化为 <code>field_001</code>, <code>field_002</code> 等格式</li>
+                <li><strong>SQL 关键词</strong>：所有 SQL 关键词保持不变，支持多种数据库方言</li>
+                <li><strong>特殊字符串</strong>：日期格式字符串（如 'yyyy-MM-dd', 'HH24:MI:SS'）保持不变</li>
+                <li><strong>排除列表</strong>：可在<a href="/configuration/">配置页面</a>设置不需要匿名化的字符串列表</li>
+            </ul>
+            
+            <h4>双向匿名化</h4>
+            <p>系统支持正向匿名化和反向匿名化，两次操作均采用同一个编码字典：</p>
+            <ul>
+                <li><strong>正向匿名化</strong>：将原始脚本中的表名、字段名替换为无意义的标识符</li>
+                <li><strong>反向匿名化</strong>：根据编码字典将匿名化后的脚本还原为原始脚本</li>
+            </ul>
+            
+            <h4>额外功能</h4>
+            <ul>
+                <li><strong>删除空行</strong>：匿名化过程中自动删除脚本中的空行</li>
+                <li><strong>删除注释</strong>：匿名化过程中自动删除脚本中的注释（包括行内注释和块注释）</li>
+            </ul>
+            
+            <h4>示例</h4>
+            <div class="script-container">
+                <pre>-- 原始 SQL
+SELECT user_id, user_name, create_date 
+FROM users 
+WHERE create_date >= '2024-01-01'
+  AND status = 1
+
+-- 匿名化后
+SELECT field_001, field_002, create_date 
+FROM table_001 
+WHERE create_date >= '2024-01-01'
+  AND field_003 = 1</pre>
             </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary">执行匿名化</button>
-                <button class="btn btn-secondary">清空</button>
-            </div>
-        </div>
-        
-        <div class="column">
-            <h3>匿名化结果</h3>
-            <div class="code-result-placeholder">
-                <pre class="code-result">匿名化处理后的脚本将显示在这里...</pre>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-secondary">复制结果</button>
-                <button class="btn btn-secondary">下载</button>
-            </div>
+            <p class="form-hint">注意：示例中 <code>create_date</code> 没有被匿名化，因为它包含了排除列表中的 "date" 字符串</p>
         </div>
     </div>
 </div>
 
-<div class="settings-section">
-    <h3>匿名化设置</h3>
-    <div class="settings-grid">
-        <div class="setting-item">
-            <label>
-                <input type="checkbox" checked> 隐藏表名和字段名
-            </label>
-        </div>
-        <div class="setting-item">
-            <label>
-                <input type="checkbox" checked> 隐藏敏感数据值
-            </label>
-        </div>
-        <div class="setting-item">
-            <label>
-                <input type="checkbox"> 保留注释
-            </label>
-        </div>
-        <div class="setting-item">
-            <label>
-                <input type="checkbox"> 生成替换映射表
-            </label>
+<div class="content-section">
+    <div class="config-section">
+        <h3>配置入口</h3>
+        <div class="info-content">
+            <p>匿名化相关配置（如排除列表）请在<a href="/configuration/">配置页面</a>中进行设置。</p>
+            <div class="config-form">
+                <div class="form-group">
+                    <a href="/configuration/" class="btn btn-secondary">
+                        前往配置页面
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<div class="history-section">
-    <h3>历史记录</h3>
-    <div class="placeholder-message">
-        <p>匿名化历史记录将显示在这里...</p>
-        <p class="placeholder-note">功能开发中</p>
-    </div>
-</div>
+{% block extra_css %}
+<style>
+.header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.header-action {
+    margin-top: 0.5rem;
+}
+
+.header-action .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+}
+
+.header-action .btn span {
+    font-size: 1.1rem;
+}
+
+.config-section h3 {
+    margin-bottom: 1rem;
+    color: #2c3e50;
+    font-size: 1.25rem;
+}
+
+.config-section .info-content {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.config-section .info-content p {
+    margin-bottom: 1rem;
+    color: #64748b;
+}
+
+.config-section .info-content a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+.config-section .info-content a:hover {
+    color: #2563eb;
+}
+
+.config-form {
+    margin-top: 1rem;
+}
+</style>
 {% endblock %}

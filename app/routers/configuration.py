@@ -1,11 +1,18 @@
+from typing import Optional
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from app.config import get_settings, templates
 
 settings = get_settings()
 
 router_configuration = APIRouter()
+
+
+class AnonymizationConfigUpdate(BaseModel):
+    exclude_list: Optional[str] = None
 
 
 @router_configuration.get("/", response_class=HTMLResponse)
@@ -17,7 +24,8 @@ async def configuration_page(request: Request):
             "title": "配置",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,
-            "active_menu": "configuration"
+            "active_menu": "configuration",
+            "anonymization_exclude_list": settings.ANONYMIZATION_EXCLUDE_LIST
         }
     )
 
@@ -64,3 +72,21 @@ async def get_openai_config():
 @router_configuration.post("/openai")
 async def update_openai_config():
     return {"message": "更新 OpenAI 配置", "data": {}}
+
+
+@router_configuration.get("/anonymization")
+async def get_anonymization_config():
+    return {
+        "success": True,
+        "exclude_list": settings.ANONYMIZATION_EXCLUDE_LIST
+    }
+
+
+@router_configuration.post("/anonymization")
+async def update_anonymization_config(config: AnonymizationConfigUpdate):
+    if config.exclude_list is not None:
+        settings.ANONYMIZATION_EXCLUDE_LIST = config.exclude_list
+    return {
+        "success": True,
+        "message": "匿名化配置已保存"
+    }

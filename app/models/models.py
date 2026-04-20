@@ -219,6 +219,11 @@ class VisualizationScript(Base):
         nullable=True,
         comment="匿名化整合脚本"
     )
+    anonymization_mapping: Mapped[Optional[str]] = mapped_column(
+        Text, 
+        nullable=True,
+        comment="匿名化编码字典（JSON格式，存储表名和字段名的映射关系）"
+    )
     converted_script: Mapped[Optional[str]] = mapped_column(
         Text, 
         nullable=True,
