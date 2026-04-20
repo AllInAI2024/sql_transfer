@@ -61,9 +61,9 @@ app.include_router(router_configuration, prefix="/configuration", tags=["配置"
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="index.html",
         context={
-            "request": request,
             "title": "首页",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION

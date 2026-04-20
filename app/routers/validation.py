@@ -11,9 +11,9 @@ router_validation = APIRouter()
 @router_validation.get("/", response_class=HTMLResponse)
 async def validation_page(request: Request):
     return templates.TemplateResponse(
+        request=request,
         name="validation.html",
         context={
-            "request": request,
             "title": "验证",
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,
