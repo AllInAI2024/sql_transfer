@@ -6,7 +6,7 @@
 <div class="welcome-section">
     <h2>欢迎使用 SQL 脚本转换工具</h2>
     <p class="subtitle">
-        将基于达梦数据库中间表的可视化脚本，转换为直接查询 ODPS (MaxCompute) 原始表的新指标脚本。
+        一个支持多种数据库方言的 SQL 脚本转换工具。将查询中间表的可视化脚本，转换为直接查询原始表的新指标脚本。
     </p>
 </div>
 
@@ -15,53 +15,95 @@
     <div class="features-grid">
         <div class="feature-card">
             <div class="feature-icon">📊</div>
-            <h4><a href="/visualization/">可视化脚本</a></h4>
-            <p>管理和查看可视化脚本，包括脚本的导入、编辑和删除。</p>
+            <h4><a href="/visualization/">中间表</a></h4>
+            <p>管理中间表脚本和可视化脚本，包括脚本的导入、编辑和与中间表的关联管理。</p>
         </div>
         
         <div class="feature-card">
             <div class="feature-icon">🔒</div>
             <h4><a href="/anonymization/">匿名化</a></h4>
-            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全。</p>
+            <p>对脚本中的敏感信息进行匿名化处理，保护数据安全，便于分享和调试。</p>
         </div>
         
         <div class="feature-card">
             <div class="feature-icon">🔄</div>
-            <h4><a href="/conversion/">脚本转换</a></h4>
-            <p>核心转换功能，将中间表脚本转换为直接查询 ODPS 的脚本。</p>
+            <h4><a href="/conversion/">转换</a></h4>
+            <p>核心转换功能，创建任务时指定三个脚本的方言，AI 智能分析并生成直接查询原始表的新脚本。</p>
         </div>
         
         <div class="feature-card">
             <div class="feature-icon">✅</div>
             <h4><a href="/validation/">验证</a></h4>
-            <p>验证转换后的脚本正确性，确保转换结果符合预期。</p>
+            <p>验证转换后的脚本正确性，对比原始脚本和转换后脚本的逻辑等价性，确保转换结果符合预期。</p>
         </div>
         
         <div class="feature-card">
             <div class="feature-icon">⚙️</div>
             <h4><a href="/configuration/">配置</a></h4>
-            <p>系统配置管理，包括数据库连接、API 密钥等设置。</p>
+            <p>系统配置管理，包括 LLM API 密钥、模型参数、数据库方言管理等设置。</p>
         </div>
+    </div>
+</div>
+
+<div class="info-section">
+    <h3>核心概念</h3>
+    <div class="info-content">
+        <h4>三种脚本类型</h4>
+        <ul>
+            <li>
+                <strong>中间表脚本</strong>：定义如何从原始表构建中间表的 SQL 脚本
+            </li>
+            <li>
+                <strong>可视化脚本</strong>：查询中间表的 SQL 脚本（用于报表、可视化等场景）
+            </li>
+            <li>
+                <strong>转换后脚本</strong>：直接查询原始表的新脚本（跳过中间表，性能更优）
+            </li>
+        </ul>
+        
+        <h4>方言支持</h4>
+        <ul>
+            <li>
+                支持多种数据库方言：<strong>MySQL、达梦、PostgreSQL、ORACLE、ODPS</strong> 等
+            </li>
+            <li>
+                创建任务时，可灵活指定<strong>三个脚本各自的方言</strong>
+            </li>
+            <li>
+                方言配置存储在数据库中，便于扩展和管理
+            </li>
+        </ul>
     </div>
 </div>
 
 <div class="info-section">
     <h3>转换本质</h3>
     <div class="info-content">
-        <ul>
-            <li>
-                <strong>可视化脚本</strong> 查询达梦数据库的中间表（通过中间表脚本从 ODPS 原始表构建）
-            </li>
-            <li>
-                <strong>中间表脚本</strong> 定义了中间表如何从 ODPS 原始表获取数据
-            </li>
-            <li>
-                转换时需要分析中间表脚本，理解 ODPS 原始表的结构和查询逻辑
-            </li>
-            <li>
-                结合两者生成直接查询 ODPS 原始表的新脚本，跳过中间表
-            </li>
-        </ul>
+        <div class="conversion-flow">
+            <div class="flow-step">
+                <div class="flow-icon">📋</div>
+                <div class="flow-text">
+                    <strong>原始查询方式</strong><br>
+                    可视化脚本 → 查询中间表 → 中间表由中间表脚本从原始表构建
+                </div>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-step">
+                <div class="flow-icon">🔍</div>
+                <div class="flow-text">
+                    <strong>AI 智能分析</strong><br>
+                    分析中间表脚本，理解原始表结构和查询逻辑
+                </div>
+            </div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-step">
+                <div class="flow-icon">✨</div>
+                <div class="flow-text">
+                    <strong>转换结果</strong><br>
+                    生成直接查询原始表的新脚本，跳过中间表
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -70,19 +112,19 @@
     <div class="steps">
         <div class="step">
             <span class="step-number">1</span>
-            <p>前往 <a href="/configuration/">配置</a> 页面设置数据库连接和 API 密钥</p>
+            <p>前往 <a href="/configuration/">配置</a> 页面设置 LLM API 密钥（用于 AI 智能转换）</p>
         </div>
         <div class="step">
             <span class="step-number">2</span>
-            <p>在 <a href="/visualization/">可视化脚本</a> 页面导入或创建脚本</p>
+            <p>在 <a href="/visualization/">中间表</a> 页面管理中间表脚本和可视化脚本</p>
         </div>
         <div class="step">
             <span class="step-number">3</span>
-            <p>使用 <a href="/conversion/">脚本转换</a> 功能进行转换</p>
+            <p>在 <a href="/conversion/">转换</a> 页面创建任务，指定三个脚本的方言，执行转换</p>
         </div>
         <div class="step">
             <span class="step-number">4</span>
-            <p>通过 <a href="/validation/">验证</a> 功能确认转换结果</p>
+            <p>通过 <a href="/validation/">验证</a> 功能对比转换前后脚本的逻辑等价性</p>
         </div>
     </div>
 </div>
