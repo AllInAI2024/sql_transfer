@@ -7,6 +7,57 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
+class Dialect(Base):
+    """
+    方言表
+    - 存储支持的数据库方言
+    - 支持的方言包括：MySQL、达梦、PostgreSQL、ORACLE、ODPS等
+    
+    设计思路：
+    - 任务表通过外键关联此表，灵活指定三个脚本的方言
+    - 这样设计使项目具备扩展性和实用性
+    - 可以通过 is_enabled 字段控制哪些方言可用
+    - 可以通过 sort_order 字段控制方言显示顺序
+    """
+    __tablename__ = "dialects"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(
+        String(100), 
+        nullable=False, 
+        unique=True,
+        index=True,
+        comment="方言英文名称（如：mysql, dameng, odps）"
+    )
+    display_name: Mapped[str] = mapped_column(
+        String(100), 
+        nullable=False,
+        comment="方言显示名称（如：MySQL, 达梦, ODPS）"
+    )
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="方言描述")
+    is_enabled: Mapped[bool] = mapped_column(
+        default=True,
+        index=True,
+        comment="是否启用"
+    )
+    sort_order: Mapped[int] = mapped_column(
+        default=0,
+        comment="排序顺序"
+    )
+    
+    # 时间戳字段
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        default=datetime.utcnow, 
+        onupdate=datetime.utcnow, 
+        comment="修改时间"
+    )
+    
+    def __repr__(self):
+        return f"<Dialect(id={self.id}, name='{self.name}', display_name='{self.display_name}')>"
+
+
 class Task(Base):
     """
     任务表
@@ -17,12 +68,33 @@ class Task(Base):
     - 每个任务包含一个可视化脚本
     - 任务只与可视化脚本相关，与中间表无关
     - 通过任务可以统一管理可视化脚本的转换工作
+    - 新增三个方言字段：中间表脚本方言、可视化脚本方言、转换后脚本方言
     """
     __tablename__ = "tasks"
     
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, comment="任务名")
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="任务描述")
+    
+    # 方言字段：三个脚本的方言，通过外键关联方言表
+    intermediate_dialect_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("dialects.id"), 
+        nullable=True,
+        index=True,
+        comment="中间表脚本方言ID"
+    )
+    visualization_dialect_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("dialects.id"), 
+        nullable=True,
+        index=True,
+        comment="可视化脚本方言ID"
+    )
+    converted_dialect_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("dialects.id"), 
+        nullable=True,
+        index=True,
+        comment="转换后脚本方言ID"
+    )
     
     # 时间戳字段
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, comment="创建时间")
@@ -38,6 +110,20 @@ class Task(Base):
         "VisualizationScript", 
         back_populates="task",
         cascade="all, delete-orphan"
+    )
+    
+    # 方言关系
+    intermediate_dialect: Mapped[Optional["Dialect"]] = relationship(
+        "Dialect", 
+        foreign_keys=[intermediate_dialect_id]
+    )
+    visualization_dialect: Mapped[Optional["Dialect"]] = relationship(
+        "Dialect", 
+        foreign_keys=[visualization_dialect_id]
+    )
+    converted_dialect: Mapped[Optional["Dialect"]] = relationship(
+        "Dialect", 
+        foreign_keys=[converted_dialect_id]
     )
     
     def __repr__(self):

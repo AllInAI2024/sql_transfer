@@ -1,4 +1,5 @@
 from app.models.models import (
+    Dialect,
     Task,
     IntermediateScript,
     VisualizationScript,
@@ -6,6 +7,7 @@ from app.models.models import (
 )
 
 __all__ = [
+    "Dialect",
     "Task",
     "IntermediateScript",
     "VisualizationScript",
