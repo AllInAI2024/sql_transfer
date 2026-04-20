@@ -4,76 +4,160 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>中间表管理</h2>
-    <p>管理中间表脚本，支持通过 Excel 批量导入、查看详情和删除操作。</p>
-</div>
-
-<div class="action-bar">
-    <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
-    <button class="btn btn-primary" id="importBtn">
-        <span>📥</span> 导入中间表脚本
-    </button>
-    <button class="btn btn-secondary" id="refreshBtn">
-        <span>🔄</span> 刷新列表
-    </button>
-</div>
-
-<div class="info-section" id="importInfo">
-    <h3>导入说明</h3>
-    <div class="info-content">
-        <p>Excel 文件需包含以下两列：</p>
-        <ul>
-            <li><strong>第一列：中间表名</strong> - 中间表的名称（全局唯一）</li>
-            <li><strong>第二列：中间表脚本</strong> - 定义如何从原始表构建中间表的 SQL 脚本</li>
-        </ul>
-        <p class="import-note">注意：如果导入的中间表名已存在，将覆盖原有脚本内容。</p>
+    <div class="header-content">
+        <div class="header-left">
+            <h2>中间表管理</h2>
+            <p>管理中间表脚本，支持通过 Excel 批量导入、查看详情和删除操作。</p>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-outline" id="toggleInfoBtn">
+                <span>ℹ️</span> 导入说明
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="table-section">
-    <table class="data-table" id="scriptsTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>中间表名</th>
-                <th>创建时间</th>
-                <th>更新时间</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody id="scriptsTableBody">
-            <tr>
-                <td colspan="5" class="loading-cell">
-                    <div class="loading">加载中...</div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+<!-- 可折叠的说明区域 -->
+<div class="collapsible-info" id="collapsibleInfo">
+    <div class="info-card">
+        <div class="info-card-header">
+            <h3>📋 导入说明</h3>
+            <button class="collapse-btn" id="collapseBtn">
+                <span>×</span>
+            </button>
+        </div>
+        <div class="info-card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-icon">1</div>
+                    <div class="info-text">
+                        <h4>准备 Excel 文件</h4>
+                        <p>Excel 文件需包含以下两列：</p>
+                        <ul>
+                            <li><strong>第一列：中间表名</strong> - 中间表的名称（全局唯一）</li>
+                            <li><strong>第二列：中间表脚本</strong> - 定义如何从原始表构建中间表的 SQL 脚本</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">2</div>
+                    <div class="info-text">
+                        <h4>导入规则</h4>
+                        <ul>
+                            <li>支持 <strong>.xlsx</strong> 和 <strong>.xls</strong> 格式</li>
+                            <li>第一行为表头（会被忽略），从第二行开始读取数据</li>
+                            <li>如果中间表名已存在，将<strong>覆盖</strong>原有脚本内容</li>
+                            <li>空行或空数据会被自动跳过</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 操作栏 -->
+<div class="action-bar-modern">
+    <div class="action-left">
+        <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+        <button class="btn btn-primary btn-lg" id="importBtn">
+            <span class="btn-icon">📥</span>
+            <span class="btn-text">导入中间表脚本</span>
+        </button>
+        <button class="btn btn-secondary btn-lg" id="refreshBtn">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">刷新列表</span>
+        </button>
+    </div>
+    <div class="action-right">
+        <div class="stats-badge" id="statsBadge">
+            <span class="stats-icon">📊</span>
+            <span class="stats-text" id="statsText">共 0 条记录</span>
+        </div>
+    </div>
+</div>
+
+<!-- 列表区域 -->
+<div class="list-container" id="listContainer">
+    <!-- 加载状态 -->
+    <div class="loading-state" id="loadingState">
+        <div class="loading-spinner"></div>
+        <p>加载中...</p>
+    </div>
+    
+    <!-- 空状态 -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon-large">📋</div>
+        <h3>暂无中间表数据</h3>
+        <p>点击上方"导入中间表脚本"按钮导入您的数据</p>
+        <button class="btn btn-primary" id="emptyImportBtn">
+            <span class="btn-icon">📥</span>
+            开始导入
+        </button>
+    </div>
+    
+    <!-- 列表内容 -->
+    <div class="list-content" id="listContent" style="display: none;">
+        <div class="table-wrapper">
+            <table class="modern-table" id="scriptsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>中间表名</th>
+                        <th style="width: 180px;">创建时间</th>
+                        <th style="width: 180px;">更新时间</th>
+                        <th style="width: 160px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="scriptsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- 详情弹窗 -->
-<div class="modal" id="detailModal">
-    <div class="modal-content">
+<div class="modal-overlay" id="detailModalOverlay">
+    <div class="modal-container" id="detailModal">
         <div class="modal-header">
-            <h3 id="detailModalTitle">中间表详情</h3>
-            <button class="modal-close" id="detailModalClose">&times;</button>
+            <div class="modal-title">
+                <span class="modal-icon">📋</span>
+                <h3>中间表详情</h3>
+            </div>
+            <button class="modal-close-btn" id="detailModalClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
         <div class="modal-body">
-            <div class="detail-group">
-                <label>中间表名：</label>
-                <span id="detailTableName"></span>
+            <div class="detail-section">
+                <div class="detail-row">
+                    <div class="detail-label">中间表名</div>
+                    <div class="detail-value" id="detailTableName">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">创建时间</div>
+                    <div class="detail-value" id="detailCreatedAt">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">更新时间</div>
+                    <div class="detail-value" id="detailUpdatedAt">-</div>
+                </div>
             </div>
-            <div class="detail-group">
-                <label>创建时间：</label>
-                <span id="detailCreatedAt"></span>
-            </div>
-            <div class="detail-group">
-                <label>更新时间：</label>
-                <span id="detailUpdatedAt"></span>
-            </div>
-            <div class="detail-group">
-                <label>中间表脚本：</label>
-                <pre id="detailScript" class="script-content"></pre>
+            <div class="detail-section">
+                <div class="detail-section-header">
+                    <span class="section-icon">📝</span>
+                    <h4>中间表脚本</h4>
+                </div>
+                <div class="script-container">
+                    <pre class="script-display" id="detailScript"></pre>
+                    <button class="copy-btn" id="copyScriptBtn">
+                        <span class="copy-icon">📋</span>
+                        复制
+                    </button>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -82,16 +166,26 @@
     </div>
 </div>
 
-<!-- 确认删除弹窗 -->
-<div class="modal" id="deleteModal">
-    <div class="modal-content modal-small">
+<!-- 删除确认弹窗 -->
+<div class="modal-overlay" id="deleteModalOverlay">
+    <div class="modal-container modal-small" id="deleteModal">
         <div class="modal-header">
-            <h3>确认删除</h3>
-            <button class="modal-close" id="deleteModalClose">&times;</button>
+            <div class="modal-title">
+                <span class="modal-icon warning">⚠️</span>
+                <h3>确认删除</h3>
+            </div>
+            <button class="modal-close-btn" id="deleteModalClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
         <div class="modal-body">
-            <p id="deleteMessage">确定要删除中间表 "<span id="deleteTableName"></span>" 吗？</p>
-            <p class="delete-warning">此操作不可恢复，请谨慎操作。</p>
+            <div class="warning-message">
+                <p>确定要删除中间表 "<strong id="deleteTableName">-</strong>" 吗？</p>
+                <p class="warning-note">此操作不可恢复，请谨慎操作。</p>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" id="deleteModalCancelBtn">取消</button>
@@ -100,8 +194,8 @@
     </div>
 </div>
 
-<!-- 消息提示 -->
-<div class="toast" id="toast"></div>
+<!-- Toast 提示 -->
+<div class="toast-container" id="toastContainer"></div>
 
 {% endblock %}
 
@@ -115,10 +209,27 @@
     const excelFileInput = document.getElementById('excelFile');
     const importBtn = document.getElementById('importBtn');
     const refreshBtn = document.getElementById('refreshBtn');
+    const emptyImportBtn = document.getElementById('emptyImportBtn');
+    const toggleInfoBtn = document.getElementById('toggleInfoBtn');
+    const collapsibleInfo = document.getElementById('collapsibleInfo');
+    const collapseBtn = document.getElementById('collapseBtn');
     const scriptsTableBody = document.getElementById('scriptsTableBody');
-    const detailModal = document.getElementById('detailModal');
-    const deleteModal = document.getElementById('deleteModal');
-    const toast = document.getElementById('toast');
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const listContent = document.getElementById('listContent');
+    const statsText = document.getElementById('statsText');
+
+    // 详情弹窗元素
+    const detailModalOverlay = document.getElementById('detailModalOverlay');
+    const detailModalClose = document.getElementById('detailModalClose');
+    const detailModalCloseBtn = document.getElementById('detailModalCloseBtn');
+    const copyScriptBtn = document.getElementById('copyScriptBtn');
+
+    // 删除弹窗元素
+    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+    const deleteModalClose = document.getElementById('deleteModalClose');
+    const deleteModalCancelBtn = document.getElementById('deleteModalCancelBtn');
+    const deleteModalConfirmBtn = document.getElementById('deleteModalConfirmBtn');
 
     // 初始化
     document.addEventListener('DOMContentLoaded', function() {
@@ -130,6 +241,10 @@
     function setupEventListeners() {
         // 导入按钮
         importBtn.addEventListener('click', function() {
+            excelFileInput.click();
+        });
+
+        emptyImportBtn.addEventListener('click', function() {
             excelFileInput.click();
         });
 
@@ -145,24 +260,54 @@
             loadScripts();
         });
 
+        // 说明区域切换
+        toggleInfoBtn.addEventListener('click', function() {
+            const isVisible = collapsibleInfo.style.display !== 'none';
+            collapsibleInfo.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                collapsibleInfo.style.animation = 'slideDown 0.3s ease';
+            }
+        });
+
+        collapseBtn.addEventListener('click', function() {
+            collapsibleInfo.style.display = 'none';
+        });
+
         // 详情弹窗关闭
-        document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
-        document.getElementById('detailModalCloseBtn').addEventListener('click', closeDetailModal);
-
-        // 删除弹窗关闭
-        document.getElementById('deleteModalClose').addEventListener('click', closeDeleteModal);
-        document.getElementById('deleteModalCancelBtn').addEventListener('click', closeDeleteModal);
-        document.getElementById('deleteModalConfirmBtn').addEventListener('click', confirmDelete);
-
-        // 点击弹窗外部关闭
-        detailModal.addEventListener('click', function(e) {
-            if (e.target === detailModal) {
+        detailModalClose.addEventListener('click', closeDetailModal);
+        detailModalCloseBtn.addEventListener('click', closeDetailModal);
+        detailModalOverlay.addEventListener('click', function(e) {
+            if (e.target === detailModalOverlay) {
                 closeDetailModal();
             }
         });
 
-        deleteModal.addEventListener('click', function(e) {
-            if (e.target === deleteModal) {
+        // 复制脚本按钮
+        copyScriptBtn.addEventListener('click', function() {
+            const scriptText = document.getElementById('detailScript').textContent;
+            navigator.clipboard.writeText(scriptText).then(function() {
+                showToast('脚本已复制到剪贴板', 'success');
+            }).catch(function() {
+                showToast('复制失败', 'error');
+            });
+        });
+
+        // 删除弹窗关闭
+        deleteModalClose.addEventListener('click', closeDeleteModal);
+        deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
+        deleteModalOverlay.addEventListener('click', function(e) {
+            if (e.target === deleteModalOverlay) {
+                closeDeleteModal();
+            }
+        });
+
+        // 确认删除
+        deleteModalConfirmBtn.addEventListener('click', confirmDelete);
+
+        // ESC 键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDetailModal();
                 closeDeleteModal();
             }
         });
@@ -170,6 +315,8 @@
 
     // 加载中间表列表
     async function loadScripts() {
+        showLoading();
+        
         try {
             const response = await fetch('/intermediate/list');
             const result = await response.json();
@@ -178,46 +325,68 @@
                 renderScriptsTable(result.data);
             } else {
                 showToast('加载列表失败', 'error');
+                showEmpty();
             }
         } catch (error) {
             console.error('加载列表失败:', error);
             showToast('加载列表失败', 'error');
+            showEmpty();
         }
     }
 
     // 渲染表格
     function renderScriptsTable(scripts) {
+        // 更新统计
+        statsText.textContent = `共 ${scripts.length} 条记录`;
+
         if (scripts.length === 0) {
-            scriptsTableBody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="empty-cell">
-                        <div class="empty-message">
-                            <div class="empty-icon">📋</div>
-                            <p>暂无中间表数据</p>
-                            <p class="empty-note">请点击上方"导入中间表脚本"按钮导入数据</p>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            showEmpty();
             return;
         }
 
+        showList();
+
         scriptsTableBody.innerHTML = scripts.map(script => `
-            <tr>
-                <td>${script.id}</td>
-                <td><strong>${escapeHtml(script.intermediate_table_name)}</strong></td>
-                <td>${formatDateTime(script.created_at)}</td>
-                <td>${formatDateTime(script.updated_at)}</td>
-                <td class="action-cell">
-                    <button class="btn btn-sm btn-info" onclick="showDetail(${script.id})">
-                        详情
+            <tr class="table-row">
+                <td class="cell-id">${script.id}</td>
+                <td class="cell-name">
+                    <div class="name-wrapper">
+                        <span class="table-name">${escapeHtml(script.intermediate_table_name)}</span>
+                    </div>
+                </td>
+                <td class="cell-date">${formatDateTime(script.created_at)}</td>
+                <td class="cell-date">${formatDateTime(script.updated_at)}</td>
+                <td class="cell-actions">
+                    <button class="action-btn view" onclick="window.showDetail(${script.id})" title="查看详情">
+                        <span class="action-icon">👁️</span>
+                        <span class="action-text">详情</span>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="showDeleteConfirm(${script.id}, '${escapeHtml(script.intermediate_table_name)}')">
-                        删除
+                    <button class="action-btn delete" onclick="window.showDeleteConfirm(${script.id}, '${escapeHtml(script.intermediate_table_name)}')" title="删除">
+                        <span class="action-icon">🗑️</span>
+                        <span class="action-text">删除</span>
                     </button>
                 </td>
             </tr>
         `).join('');
+    }
+
+    // 状态切换
+    function showLoading() {
+        loadingState.style.display = 'flex';
+        emptyState.style.display = 'none';
+        listContent.style.display = 'none';
+    }
+
+    function showEmpty() {
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'flex';
+        listContent.style.display = 'none';
+    }
+
+    function showList() {
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'none';
+        listContent.style.display = 'block';
     }
 
     // 导入 Excel 文件
@@ -227,7 +396,8 @@
 
         try {
             importBtn.disabled = true;
-            importBtn.innerHTML = '<span>⏳</span> 导入中...';
+            importBtn.classList.add('loading');
+            importBtn.querySelector('.btn-text').textContent = '导入中...';
 
             const response = await fetch('/intermediate/import', {
                 method: 'POST',
@@ -247,13 +417,14 @@
             showToast('导入失败', 'error');
         } finally {
             importBtn.disabled = false;
-            importBtn.innerHTML = '<span>📥</span> 导入中间表脚本';
+            importBtn.classList.remove('loading');
+            importBtn.querySelector('.btn-text').textContent = '导入中间表脚本';
             excelFileInput.value = '';
         }
     }
 
-    // 显示详情
-    async function showDetail(scriptId) {
+    // 显示详情（挂载到 window 对象以确保全局可访问）
+    window.showDetail = async function(scriptId) {
         try {
             const response = await fetch(`/intermediate/${scriptId}`);
             const result = await response.json();
@@ -273,24 +444,24 @@
             console.error('获取详情失败:', error);
             showToast('获取详情失败', 'error');
         }
-    }
+    };
 
-    // 显示删除确认
-    function showDeleteConfirm(scriptId, tableName) {
+    // 显示删除确认（挂载到 window 对象以确保全局可访问）
+    window.showDeleteConfirm = function(scriptId, tableName) {
         currentDeleteId = scriptId;
         currentDeleteName = tableName;
         document.getElementById('deleteTableName').textContent = tableName;
         openDeleteModal();
-    }
+    };
 
     // 确认删除
     async function confirmDelete() {
         if (!currentDeleteId) return;
 
         try {
-            const confirmBtn = document.getElementById('deleteModalConfirmBtn');
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = '删除中...';
+            deleteModalConfirmBtn.disabled = true;
+            deleteModalConfirmBtn.textContent = '删除中...';
+            deleteModalConfirmBtn.classList.add('loading');
 
             const response = await fetch(`/intermediate/${currentDeleteId}`, {
                 method: 'DELETE'
@@ -309,9 +480,9 @@
             console.error('删除失败:', error);
             showToast('删除失败', 'error');
         } finally {
-            const confirmBtn = document.getElementById('deleteModalConfirmBtn');
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = '确认删除';
+            deleteModalConfirmBtn.disabled = false;
+            deleteModalConfirmBtn.textContent = '确认删除';
+            deleteModalConfirmBtn.classList.remove('loading');
             currentDeleteId = null;
             currentDeleteName = null;
         }
@@ -319,22 +490,22 @@
 
     // 弹窗控制
     function openDetailModal() {
-        detailModal.classList.add('active');
+        detailModalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     function closeDetailModal() {
-        detailModal.classList.remove('active');
+        detailModalOverlay.classList.remove('active');
         document.body.style.overflow = '';
     }
 
     function openDeleteModal() {
-        deleteModal.classList.add('active');
+        deleteModalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     function closeDeleteModal() {
-        deleteModal.classList.remove('active');
+        deleteModalOverlay.classList.remove('active');
         document.body.style.overflow = '';
         currentDeleteId = null;
         currentDeleteName = null;
@@ -362,12 +533,38 @@
 
     // 显示提示消息
     function showToast(message, type = 'info') {
-        toast.textContent = message;
+        const toastContainer = document.getElementById('toastContainer');
+        
+        const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.style.display = 'block';
-
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            info: 'ℹ️',
+            warning: '⚠️'
+        };
+        
+        toast.innerHTML = `
+            <span class="toast-icon">${icons[type] || icons.info}</span>
+            <span class="toast-message">${message}</span>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // 显示动画
         setTimeout(() => {
-            toast.style.display = 'none';
+            toast.classList.add('show');
+        }, 10);
+        
+        // 自动关闭
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
         }, 3000);
     }
 </script>
