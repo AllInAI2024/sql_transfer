@@ -10,6 +10,9 @@
             <p>任务详情和可视化脚本管理</p>
         </div>
         <div class="header-right">
+            <button class="btn btn-primary" id="importScriptBtn">
+                <span>📥</span> 导入可视化脚本
+            </button>
             <a href="/anonymization/" class="btn btn-secondary">
                 ← 返回任务列表
             </a>
@@ -56,10 +59,6 @@
                 <div class="info-label">创建时间</div>
                 <div class="info-value">{{ task.created_at }}</div>
             </div>
-            <div class="info-item">
-                <div class="info-label">更新时间</div>
-                <div class="info-value">{{ task.updated_at }}</div>
-            </div>
         </div>
     </div>
 </div>
@@ -68,80 +67,139 @@
     <div class="detail-section-header">
         <span class="section-icon">📄</span>
         <h4>可视化脚本列表</h4>
-        <span class="task-count">共 {{ scripts|length }} 个脚本</span>
+        <span class="task-count" id="scriptCount">共 {{ scripts|length }} 个脚本</span>
     </div>
     
-    {% if scripts %}
-    <div class="table-wrapper">
-        <table class="modern-table" id="scriptsTable">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">ID</th>
-                    <th>脚本名称</th>
-                    <th>关联中间表</th>
-                    <th>状态</th>
-                    <th style="width: 180px;">更新时间</th>
-                    <th style="width: 160px;">操作</th>
-                </tr>
-            </thead>
-            <tbody id="scriptsTableBody">
-                {% for script in scripts %}
-                <tr>
-                    <td>{{ script.id }}</td>
-                    <td>
-                        <strong>{{ script.name }}</strong>
-                        {% if script.description %}
-                        <br>
-                        <span class="text-muted">{{ script.description }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if script.intermediate_table_names %}
-                        <span class="badge badge-info">{{ script.intermediate_table_names }}</span>
-                        {% else %}
-                        <span class="text-muted">无</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="status-badges">
-                            {% if script.has_integrated_script %}
-                            <span class="badge badge-outline" title="已整合">整合</span>
+    <div id="scriptListContainer">
+        {% if scripts %}
+        <div class="table-wrapper">
+            <table class="modern-table" id="scriptsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>脚本名称</th>
+                        <th>关联中间表</th>
+                        <th>状态</th>
+                        <th style="width: 180px;">更新时间</th>
+                        <th style="width: 200px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="scriptsTableBody">
+                    {% for script in scripts %}
+                    <tr data-script-id="{{ script.id }}">
+                        <td>{{ script.id }}</td>
+                        <td>
+                            <strong>{{ script.name }}</strong>
+                            {% if script.description %}
+                            <br>
+                            <span class="text-muted">{{ script.description }}</span>
                             {% endif %}
-                            {% if script.has_anonymized_script %}
-                            <span class="badge badge-success" title="已匿名化">匿名</span>
+                        </td>
+                        <td>
+                            {% if script.intermediate_table_names %}
+                            <span class="badge badge-info">{{ script.intermediate_table_names }}</span>
+                            {% else %}
+                            <span class="text-muted">无</span>
                             {% endif %}
-                            {% if script.has_converted_script %}
-                            <span class="badge badge-warning" title="已转换">转换</span>
-                            {% endif %}
-                            {% if not script.has_integrated_script and not script.has_anonymized_script and not script.has_converted_script %}
-                            <span class="text-muted">待处理</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>{{ script.updated_at }}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn btn-sm btn-outline" title="查看详情" onclick="viewScript({{ script.id }})">
-                                👁️ 详情
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>
+                            <div class="status-badges">
+                                {% if script.has_integrated_script %}
+                                <span class="badge badge-outline" title="已整合">整合</span>
+                                {% endif %}
+                                {% if script.has_anonymized_script %}
+                                <span class="badge badge-success" title="已匿名化">匿名</span>
+                                {% endif %}
+                                {% if script.has_converted_script %}
+                                <span class="badge badge-warning" title="已转换">转换</span>
+                                {% endif %}
+                                {% if not script.has_integrated_script and not script.has_anonymized_script and not script.has_converted_script %}
+                                <span class="text-muted">待处理</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ script.updated_at }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-outline view-script-btn" data-script-id="{{ script.id }}" title="查看详情">
+                                    👁️ 详情
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-script-btn" data-script-id="{{ script.id }}" title="删除">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">📄</div>
+            <h4>暂无可视化脚本</h4>
+            <p>点击右上角"导入可视化脚本"按钮导入 Excel 文件。</p>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                Excel 格式：第1列为脚本名称，第2列为可视化脚本内容
+            </p>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-icon">📄</div>
-        <h4>暂无可视化脚本</h4>
-        <p>该任务下还没有可视化脚本。</p>
+</div>
+
+<div class="modal-overlay" id="importModalOverlay" style="display: none;">
+    <div class="modal-container modal-small" id="importModal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <span class="modal-icon">📥</span>
+                <h3>导入可视化脚本</h3>
+            </div>
+            <button class="modal-close-btn" id="importModalClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="import-section">
+                <p class="import-hint">
+                    请上传 Excel 文件（.xlsx 或 .xls 格式）
+                </p>
+                <div class="import-example">
+                    <p><strong>Excel 格式说明：</strong></p>
+                    <ul>
+                        <li><strong>第1列</strong>：可视化脚本名称</li>
+                        <li><strong>第2列</strong>：可视化脚本内容（SQL 语句）</li>
+                    </ul>
+                    <p style="margin-top: 0.75rem; color: #64748b; font-size: 0.85rem;">
+                        💡 系统会自动从脚本中识别中间表名，并查找对应的中间表脚本进行整合。
+                    </p>
+                </div>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">点击或拖拽文件到此处</p>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                </div>
+                <div class="selected-file-info" id="selectedFileInfo" style="display: none;">
+                    <span class="file-icon">📄</span>
+                    <span class="file-name" id="selectedFileName"></span>
+                    <button class="btn btn-sm btn-secondary clear-file-btn" id="clearFileBtn">清除</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="importModalCancelBtn">取消</button>
+            <button class="btn btn-primary" id="importModalConfirmBtn" disabled>
+                <span class="btn-icon">📥</span>
+                <span class="btn-text">开始导入</span>
+            </button>
+        </div>
     </div>
-    {% endif %}
 </div>
 
 <div class="modal-overlay" id="scriptModalOverlay" style="display: none;">
-    <div class="modal-container" id="scriptModal">
+    <div class="modal-container" id="scriptModal" style="max-width: 900px;">
         <div class="modal-header">
             <div class="modal-title">
                 <span class="modal-icon">📄</span>
@@ -154,10 +212,37 @@
                 </svg>
             </button>
         </div>
-        <div class="modal-body" id="scriptModalBody">
+        <div class="modal-body" id="scriptModalBody" style="max-height: 600px; overflow-y: auto;">
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" id="scriptModalCloseBtn">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModalOverlay" style="display: none;">
+    <div class="modal-container modal-small" id="deleteModal">
+        <div class="modal-header">
+            <div class="modal-title">
+                <span class="modal-icon warning">⚠️</span>
+                <h3>确认删除</h3>
+            </div>
+            <button class="modal-close-btn" id="deleteModalClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="warning-message">
+                <p>确定要删除脚本 "<strong id="deleteScriptName">-</strong>" 吗？</p>
+                <p class="warning-note">此操作不可恢复，请谨慎操作。</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="deleteModalCancelBtn">取消</button>
+            <button class="btn btn-danger" id="deleteModalConfirmBtn">确认删除</button>
         </div>
     </div>
 </div>
@@ -167,10 +252,161 @@
 
 {% block extra_js %}
 <script>
+const currentTaskId = {{ task.id }};
+let selectedFile = null;
+let scriptToDeleteId = null;
+let scriptToDeleteName = null;
+
 document.addEventListener('DOMContentLoaded', function() {
+    const importScriptBtn = document.getElementById('importScriptBtn');
+    const importModalOverlay = document.getElementById('importModalOverlay');
+    const importModalClose = document.getElementById('importModalClose');
+    const importModalCancelBtn = document.getElementById('importModalCancelBtn');
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const selectedFileInfo = document.getElementById('selectedFileInfo');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const clearFileBtn = document.getElementById('clearFileBtn');
+    const importModalConfirmBtn = document.getElementById('importModalConfirmBtn');
+    
     const scriptModalOverlay = document.getElementById('scriptModalOverlay');
     const scriptModalClose = document.getElementById('scriptModalClose');
     const scriptModalCloseBtn = document.getElementById('scriptModalCloseBtn');
+    
+    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+    const deleteModalClose = document.getElementById('deleteModalClose');
+    const deleteModalCancelBtn = document.getElementById('deleteModalCancelBtn');
+    const deleteModalConfirmBtn = document.getElementById('deleteModalConfirmBtn');
+    
+    function openImportModal() {
+        selectedFile = null;
+        fileInput.value = '';
+        selectedFileInfo.style.display = 'none';
+        importModalConfirmBtn.disabled = true;
+        importModalOverlay.style.display = 'flex';
+    }
+    
+    function closeImportModal() {
+        importModalOverlay.style.display = 'none';
+    }
+    
+    importScriptBtn.addEventListener('click', openImportModal);
+    importModalClose.addEventListener('click', closeImportModal);
+    importModalCancelBtn.addEventListener('click', closeImportModal);
+    
+    importModalOverlay.addEventListener('click', function(e) {
+        if (e.target === importModalOverlay) {
+            closeImportModal();
+        }
+    });
+    
+    fileUploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    fileUploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+    });
+    
+    fileUploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+    
+    function handleFileSelect(file) {
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel'
+        ];
+        const allowedExtensions = ['.xlsx', '.xls'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedExtensions.includes(fileExtension)) {
+            showToast('请上传 Excel 文件 (.xlsx 或 .xls)', 'warning');
+            return;
+        }
+        
+        selectedFile = file;
+        selectedFileName.textContent = file.name;
+        selectedFileInfo.style.display = 'flex';
+        importModalConfirmBtn.disabled = false;
+    }
+    
+    clearFileBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        selectedFile = null;
+        fileInput.value = '';
+        selectedFileInfo.style.display = 'none';
+        importModalConfirmBtn.disabled = true;
+    });
+    
+    importModalConfirmBtn.addEventListener('click', async function() {
+        if (!selectedFile) {
+            showToast('请选择要导入的文件', 'warning');
+            return;
+        }
+        
+        this.disabled = true;
+        const originalText = this.innerHTML;
+        this.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">导入中...</span>';
+        
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        try {
+            const response = await fetch(`/anonymization/api/task/${currentTaskId}/import`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                showToast(result.message, 'success');
+                
+                if (result.warnings && result.warnings.length > 0) {
+                    setTimeout(() => {
+                        showToast(`警告: ${result.warnings[0]}`, 'warning');
+                    }, 500);
+                }
+                
+                closeImportModal();
+                await loadScripts();
+            } else {
+                showToast(result.detail || result.message || '导入失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = originalText;
+        }
+    });
+    
+    function openScriptModal(scriptId, scriptName) {
+        document.getElementById('modalScriptName').textContent = scriptName;
+        document.getElementById('scriptModalBody').innerHTML = '<div class="loading-state">加载中...</div>';
+        scriptModalOverlay.style.display = 'flex';
+        
+        loadScriptDetail(scriptId);
+    }
     
     function closeScriptModal() {
         scriptModalOverlay.style.display = 'none';
@@ -184,10 +420,288 @@ document.addEventListener('DOMContentLoaded', function() {
             closeScriptModal();
         }
     });
+    
+    function openDeleteModal(scriptId, scriptName) {
+        scriptToDeleteId = scriptId;
+        scriptToDeleteName = scriptName;
+        document.getElementById('deleteScriptName').textContent = scriptName;
+        deleteModalOverlay.style.display = 'flex';
+    }
+    
+    function closeDeleteModal() {
+        deleteModalOverlay.style.display = 'none';
+        scriptToDeleteId = null;
+        scriptToDeleteName = null;
+    }
+    
+    deleteModalClose.addEventListener('click', closeDeleteModal);
+    deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
+    
+    deleteModalOverlay.addEventListener('click', function(e) {
+        if (e.target === deleteModalOverlay) {
+            closeDeleteModal();
+        }
+    });
+    
+    deleteModalConfirmBtn.addEventListener('click', async function() {
+        if (!scriptToDeleteId) return;
+        
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = '删除中...';
+        
+        try {
+            const response = await fetch(`/anonymization/api/script/${scriptToDeleteId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                showToast('删除成功', 'success');
+                closeDeleteModal();
+                await loadScripts();
+            } else {
+                showToast(result.detail || result.message || '删除失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            this.disabled = false;
+            this.textContent = originalText;
+        }
+    });
+    
+    bindActionButtons();
 });
 
-function viewScript(scriptId) {
-    showToast('脚本详情功能开发中...', 'info');
+async function loadScripts() {
+    try {
+        const response = await fetch(`/anonymization/api/task/${currentTaskId}/scripts`);
+        const result = await response.json();
+        
+        if (result.success) {
+            renderScripts(result.data);
+        }
+    } catch (error) {
+        console.error('加载脚本列表失败:', error);
+        showToast('加载脚本列表失败', 'error');
+    }
+}
+
+function renderScripts(scripts) {
+    const container = document.getElementById('scriptListContainer');
+    const scriptCount = document.getElementById('scriptCount');
+    
+    scriptCount.textContent = `共 ${scripts.length} 个脚本`;
+    
+    if (scripts.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <h4>暂无可视化脚本</h4>
+                <p>点击右上角"导入可视化脚本"按钮导入 Excel 文件。</p>
+                <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                    Excel 格式：第1列为脚本名称，第2列为可视化脚本内容
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="table-wrapper">
+            <table class="modern-table" id="scriptsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>脚本名称</th>
+                        <th>关联中间表</th>
+                        <th>状态</th>
+                        <th style="width: 180px;">更新时间</th>
+                        <th style="width: 200px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="scriptsTableBody">
+    `;
+    
+    scripts.forEach(script => {
+        const hasIntermediate = script.intermediate_table_names && script.intermediate_table_names.length > 0;
+        
+        const statusBadges = [];
+        if (script.has_integrated_script) {
+            statusBadges.push('<span class="badge badge-outline" title="已整合">整合</span>');
+        }
+        if (script.has_anonymized_script) {
+            statusBadges.push('<span class="badge badge-success" title="已匿名化">匿名</span>');
+        }
+        if (script.has_converted_script) {
+            statusBadges.push('<span class="badge badge-warning" title="已转换">转换</span>');
+        }
+        
+        html += `
+            <tr data-script-id="${script.id}">
+                <td>${script.id}</td>
+                <td>
+                    <strong>${escapeHtml(script.name)}</strong>
+                    ${script.description ? `<br><span class="text-muted">${escapeHtml(script.description)}</span>` : ''}
+                </td>
+                <td>
+                    ${hasIntermediate 
+                        ? `<span class="badge badge-info">${escapeHtml(script.intermediate_table_names)}</span>`
+                        : '<span class="text-muted">无</span>'
+                    }
+                </td>
+                <td>
+                    <div class="status-badges">
+                        ${statusBadges.length > 0 ? statusBadges.join('') : '<span class="text-muted">待处理</span>'}
+                    </div>
+                </td>
+                <td>${script.updated_at || '-'}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-outline view-script-btn" data-script-id="${script.id}" data-script-name="${escapeHtml(script.name)}" title="查看详情">
+                            👁️ 详情
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-script-btn" data-script-id="${script.id}" data-script-name="${escapeHtml(script.name)}" title="删除">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    bindActionButtons();
+}
+
+function bindActionButtons() {
+    document.querySelectorAll('.view-script-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const scriptId = this.getAttribute('data-script-id');
+            const scriptName = this.getAttribute('data-script-name');
+            openScriptModal(scriptId, scriptName);
+        });
+    });
+    
+    document.querySelectorAll('.delete-script-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const scriptId = this.getAttribute('data-script-id');
+            const scriptName = this.getAttribute('data-script-name');
+            openDeleteModal(scriptId, scriptName);
+        });
+    });
+}
+
+async function loadScriptDetail(scriptId) {
+    const body = document.getElementById('scriptModalBody');
+    
+    try {
+        const response = await fetch(`/anonymization/api/script/${scriptId}`);
+        
+        if (!response.ok) {
+            body.innerHTML = '<div class="error-state">加载失败</div>';
+            return;
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            body.innerHTML = `<div class="error-state">${result.message || '加载失败'}</div>`;
+            return;
+        }
+        
+        const script = result.data;
+        
+        let html = `
+            <div class="script-detail-section">
+                <div class="detail-row">
+                    <span class="detail-label">脚本名称:</span>
+                    <span class="detail-value">${escapeHtml(script.name)}</span>
+                </div>
+                ${script.intermediate_table_names ? `
+                <div class="detail-row">
+                    <span class="detail-label">关联中间表:</span>
+                    <span class="detail-value">${escapeHtml(script.intermediate_table_names)}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        if (script.visualization_script) {
+            html += `
+                <div class="script-detail-section">
+                    <h5 class="detail-section-title">可视化脚本</h5>
+                    <div class="script-container">
+                        <pre class="script-display">${escapeHtml(script.visualization_script)}</pre>
+                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(script.visualization_script).replace(/`/g, '\\`')}\`)">复制</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (script.integrated_script) {
+            html += `
+                <div class="script-detail-section">
+                    <h5 class="detail-section-title">整合脚本（中间表 + 可视化）</h5>
+                    <div class="script-container">
+                        <pre class="script-display">${escapeHtml(script.integrated_script)}</pre>
+                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(script.integrated_script).replace(/`/g, '\\`')}\`)">复制</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (script.anonymized_integrated_script) {
+            html += `
+                <div class="script-detail-section">
+                    <h5 class="detail-section-title">匿名化整合脚本</h5>
+                    <div class="script-container">
+                        <pre class="script-display">${escapeHtml(script.anonymized_integrated_script)}</pre>
+                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(script.anonymized_integrated_script).replace(/`/g, '\\`')}\`)">复制</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (script.converted_script) {
+            html += `
+                <div class="script-detail-section">
+                    <h5 class="detail-section-title">转换后脚本</h5>
+                    <div class="script-container">
+                        <pre class="script-display">${escapeHtml(script.converted_script)}</pre>
+                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(script.converted_script).replace(/`/g, '\\`')}\`)">复制</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        body.innerHTML = html;
+    } catch (error) {
+        body.innerHTML = '<div class="error-state">加载失败: ' + error.message + '</div>';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('已复制到剪贴板', 'success');
+    }).catch(() => {
+        showToast('复制失败', 'error');
+    });
 }
 
 function showToast(message, type = 'info') {
@@ -238,7 +752,7 @@ function showToast(message, type = 'info') {
 
 .header-right {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     margin-top: 0.5rem;
 }
 
@@ -247,7 +761,7 @@ function showToast(message, type = 'info') {
     align-items: center;
     gap: 0.5rem;
     font-size: 1rem;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1.25rem;
 }
 
 .detail-section-header {
@@ -410,6 +924,23 @@ function showToast(message, type = 'info') {
     font-size: 0.75rem;
 }
 
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .btn-secondary {
     background: #f3f4f6;
     color: #374151;
@@ -428,6 +959,16 @@ function showToast(message, type = 'info') {
 
 .btn-outline:hover {
     background: #eff6ff;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 .empty-state {
@@ -471,11 +1012,15 @@ function showToast(message, type = 'info') {
 .modal-container {
     background: #fff;
     border-radius: 12px;
-    max-width: 800px;
+    max-width: 520px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-small {
+    max-width: 420px;
 }
 
 .modal-header {
@@ -500,6 +1045,10 @@ function showToast(message, type = 'info') {
 
 .modal-icon {
     font-size: 1.25rem;
+}
+
+.modal-icon.warning {
+    color: #f59e0b;
 }
 
 .modal-close-btn {
@@ -529,6 +1078,186 @@ function showToast(message, type = 'info') {
     border-top: 1px solid #e5e7eb;
 }
 
+.import-section {
+    padding: 0.5rem;
+}
+
+.import-hint {
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
+    color: #374151;
+}
+
+.import-example {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.import-example p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.import-example ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.import-example li {
+    margin-bottom: 0.25rem;
+}
+
+.file-upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafafa;
+}
+
+.file-upload-area:hover,
+.file-upload-area.dragover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.upload-text {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+.selected-file-info {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f0fdf4;
+    border-radius: 8px;
+    border: 1px solid #bbf7d0;
+}
+
+.file-icon {
+    font-size: 1.25rem;
+}
+
+.file-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #166534;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clear-file-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.warning-message p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.95rem;
+    color: #374151;
+}
+
+.warning-message .warning-note {
+    color: #dc2626;
+    font-size: 0.875rem;
+}
+
+.script-detail-section {
+    margin-bottom: 1.5rem;
+}
+
+.script-detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.detail-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #64748b;
+    min-width: 80px;
+}
+
+.detail-value {
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.detail-section-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    color: #374151;
+    font-weight: 600;
+}
+
+.script-container {
+    position: relative;
+    background: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.script-display {
+    margin: 0;
+    padding: 1rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #d4d4d4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: #d4d4d4;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.loading-state,
+.error-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -549,6 +1278,7 @@ function showToast(message, type = 'info') {
         width: 100%;
         justify-content: flex-start;
         margin-top: 1rem;
+        flex-wrap: wrap;
     }
     
     .info-grid {
