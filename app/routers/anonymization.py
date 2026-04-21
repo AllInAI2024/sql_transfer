@@ -1,14 +1,17 @@
 from typing import Dict, List, Optional
+from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, JSONResponse
+from openpyxl import load_workbook
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import get_settings, templates
 from app.database import get_db
-from app.models.models import Dialect, Task, VisualizationScript
+from app.models.models import Dialect, IntermediateScript, Task, VisualizationScript
 from app.services.anonymization_service import anonymize_sql, deanonymize_sql
+from app.services.visualization_import_service import process_visualization_script_import
 
 settings = get_settings()
 
@@ -413,3 +416,198 @@ async def task_detail_page(task_id: int, request: Request, db: Session = Depends
             "scripts": script_list,
         }
     )
+
+
+@router_anonymization.get("/api/task/{task_id}/scripts")
+async def list_task_scripts(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    scripts = db.query(VisualizationScript).filter(
+        VisualizationScript.task_id == task_id
+    ).order_by(VisualizationScript.updated_at.desc()).all()
+    
+    result = []
+    for vs in scripts:
+        result.append({
+            "id": vs.id,
+            "name": vs.name,
+            "intermediate_table_names": vs.intermediate_table_names,
+            "description": vs.description,
+            "has_integrated_script": bool(vs.integrated_script),
+            "has_anonymized_script": bool(vs.anonymized_integrated_script),
+            "has_converted_script": bool(vs.converted_script),
+            "created_at": vs.created_at.strftime('%Y-%m-%d %H:%M:%S') if vs.created_at else None,
+            "updated_at": vs.updated_at.strftime('%Y-%m-%d %H:%M:%S') if vs.updated_at else None,
+        })
+    
+    return JSONResponse(content={
+        "success": True,
+        "data": result,
+        "task_name": task.name
+    })
+
+
+@router_anonymization.post("/api/task/{task_id}/import")
+async def import_visualization_scripts(
+    task_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="请上传 Excel 文件 (.xlsx 或 .xls)")
+    
+    try:
+        contents = await file.read()
+        workbook = load_workbook(filename=BytesIO(contents), data_only=True)
+        sheet = workbook.active
+        
+        if sheet.max_row < 2:
+            raise HTTPException(status_code=400, detail="Excel 文件中没有数据")
+        
+        intermediate_scripts = db.query(IntermediateScript).all()
+        intermediate_scripts_dict = {
+            iscript.intermediate_table_name.lower(): iscript.script
+            for iscript in intermediate_scripts
+        }
+        
+        scripts_to_import = []
+        errors = []
+        validation_errors = []
+        
+        for row_idx in range(2, sheet.max_row + 1):
+            script_name = sheet.cell(row=row_idx, column=1).value
+            visualization_script_content = sheet.cell(row=row_idx, column=2).value
+            
+            if not script_name or not visualization_script_content:
+                if script_name or visualization_script_content:
+                    errors.append(f"第 {row_idx} 行：脚本名称或可视化脚本为空")
+                continue
+            
+            script_name = str(script_name).strip()
+            visualization_script_content = str(visualization_script_content).strip()
+            
+            if not script_name or not visualization_script_content:
+                errors.append(f"第 {row_idx} 行：脚本名称或可视化脚本为空")
+                continue
+            
+            process_result = process_visualization_script_import(
+                script_name=script_name,
+                visualization_script=visualization_script_content,
+                existing_intermediate_scripts=intermediate_scripts_dict
+            )
+            
+            if process_result['missing_tables']:
+                validation_errors.append(
+                    f"脚本 '{script_name}' 中引用的中间表未找到: {', '.join(process_result['missing_tables'])}"
+                )
+            
+            scripts_to_import.append({
+                'row_idx': row_idx,
+                'name': script_name,
+                'visualization_script': visualization_script_content,
+                'process_result': process_result
+            })
+        
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail=f"校验失败：{validation_errors[0]}"
+            )
+        
+        imported_count = 0
+        updated_count = 0
+        warning_messages = []
+        
+        for script_data in scripts_to_import:
+            script_name = script_data['name']
+            visualization_script_content = script_data['visualization_script']
+            process_result = script_data['process_result']
+            
+            existing_script = db.query(VisualizationScript).filter(
+                VisualizationScript.task_id == task_id,
+                VisualizationScript.name == script_name
+            ).first()
+            
+            if existing_script:
+                existing_script.visualization_script = visualization_script_content
+                existing_script.intermediate_table_names = process_result['intermediate_table_names']
+                existing_script.integrated_script = process_result['integrated_script']
+                updated_count += 1
+            else:
+                new_script = VisualizationScript(
+                    task_id=task_id,
+                    name=script_name,
+                    visualization_script=visualization_script_content,
+                    intermediate_table_names=process_result['intermediate_table_names'],
+                    integrated_script=process_result['integrated_script']
+                )
+                db.add(new_script)
+                imported_count += 1
+        
+        db.commit()
+        
+        message = f"导入完成：新增 {imported_count} 条，更新 {updated_count} 条"
+        if warning_messages:
+            message += f"，{len(warning_messages)} 个警告"
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": message,
+            "imported_count": imported_count,
+            "updated_count": updated_count,
+            "warnings": warning_messages,
+            "errors": errors
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"导入失败：{str(e)}")
+
+
+@router_anonymization.delete("/api/script/{script_id}")
+async def delete_visualization_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(VisualizationScript).filter(VisualizationScript.id == script_id).first()
+    
+    if not script:
+        raise HTTPException(status_code=404, detail="可视化脚本不存在")
+    
+    db.delete(script)
+    db.commit()
+    
+    return JSONResponse(content={
+        "success": True,
+        "message": "删除成功"
+    })
+
+
+@router_anonymization.get("/api/script/{script_id}")
+async def get_visualization_script_detail(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(VisualizationScript).filter(VisualizationScript.id == script_id).first()
+    
+    if not script:
+        raise HTTPException(status_code=404, detail="可视化脚本不存在")
+    
+    return JSONResponse(content={
+        "success": True,
+        "data": {
+            "id": script.id,
+            "name": script.name,
+            "description": script.description,
+            "intermediate_table_names": script.intermediate_table_names,
+            "visualization_script": script.visualization_script,
+            "integrated_script": script.integrated_script,
+            "anonymized_integrated_script": script.anonymized_integrated_script,
+            "anonymization_mapping": script.anonymization_mapping,
+            "converted_script": script.converted_script,
+            "created_at": script.created_at.strftime('%Y-%m-%d %H:%M:%S') if script.created_at else None,
+            "updated_at": script.updated_at.strftime('%Y-%m-%d %H:%M:%S') if script.updated_at else None,
+        }
+    })
