@@ -611,3 +611,45 @@ async def get_visualization_script_detail(script_id: int, db: Session = Depends(
             "updated_at": script.updated_at.strftime('%Y-%m-%d %H:%M:%S') if script.updated_at else None,
         }
     })
+
+
+@router_anonymization.post("/api/script/{script_id}/anonymize")
+async def anonymize_visualization_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(VisualizationScript).filter(VisualizationScript.id == script_id).first()
+    
+    if not script:
+        raise HTTPException(status_code=404, detail="可视化脚本不存在")
+    
+    if not script.integrated_script:
+        raise HTTPException(status_code=400, detail="整合脚本为空，无法进行匿名化")
+    
+    try:
+        exclude_list_str = settings.ANONYMIZATION_EXCLUDE_LIST
+        exclude_list = [item.strip() for item in exclude_list_str.split(",") if item.strip()]
+        
+        dialect = settings.ANONYMIZATION_DEFAULT_DIALECT
+        
+        anonymized_sql, mapping = anonymize_sql(
+            sql=script.integrated_script,
+            exclude_list=exclude_list,
+            dialect=dialect,
+            remove_comments=True
+        )
+        
+        script.anonymized_integrated_script = anonymized_sql
+        script.anonymization_mapping = str(mapping)
+        
+        db.commit()
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "匿名化完成",
+            "data": {
+                "anonymized_script": anonymized_sql,
+                "mapping": mapping
+            }
+        })
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"匿名化失败：{str(e)}")
