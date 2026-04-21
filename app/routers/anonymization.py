@@ -476,10 +476,9 @@ async def import_visualization_scripts(
             for iscript in intermediate_scripts
         }
         
-        imported_count = 0
-        updated_count = 0
+        scripts_to_import = []
         errors = []
-        warning_messages = []
+        validation_errors = []
         
         for row_idx in range(2, sheet.max_row + 1):
             script_name = sheet.cell(row=row_idx, column=1).value
@@ -504,9 +503,31 @@ async def import_visualization_scripts(
             )
             
             if process_result['missing_tables']:
-                warning_messages.append(
+                validation_errors.append(
                     f"脚本 '{script_name}' 中引用的中间表未找到: {', '.join(process_result['missing_tables'])}"
                 )
+            
+            scripts_to_import.append({
+                'row_idx': row_idx,
+                'name': script_name,
+                'visualization_script': visualization_script_content,
+                'process_result': process_result
+            })
+        
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail=f"校验失败：{validation_errors[0]}"
+            )
+        
+        imported_count = 0
+        updated_count = 0
+        warning_messages = []
+        
+        for script_data in scripts_to_import:
+            script_name = script_data['name']
+            visualization_script_content = script_data['visualization_script']
+            process_result = script_data['process_result']
             
             existing_script = db.query(VisualizationScript).filter(
                 VisualizationScript.task_id == task_id,

@@ -12,7 +12,7 @@ SQL_KEYWORDS = {
     "COMMIT", "ROLLBACK", "SAVEPOINT", "TRANSACTION", "BEGIN", "END", "IF", "ELSE",
     "CASE", "WHEN", "THEN", "ELSEIF", "WHILE", "LOOP", "FOR", "CURSOR", "OPEN",
     "CLOSE", "FETCH", "DECLARE", "TRUE", "FALSE", "ASC", "DESC", "TOP", "PERCENT",
-    "WITH", "TIES", "ONLY", "FIRST", "NEXT", "ROW", "ROWS", "OVER", "PARTITION",
+    "TIES", "ONLY", "FIRST", "NEXT", "ROW", "ROWS", "OVER", "PARTITION",
     "RANK", "DENSE_RANK", "ROW_NUMBER", "NTILE", "LEAD", "LAG", "FIRST_VALUE",
     "LAST_VALUE", "NTH_VALUE", "CUME_DIST", "PERCENT_RANK", "PERCENTILE_CONT",
     "PERCENTILE_DISC", "WITHIN", "ARRAY", "MULTISET", "XML", "JSON", "TABLESAMPLE",
@@ -129,7 +129,6 @@ SQL_KEYWORDS = {
     "INITIALLY", "DEFERRED", "IMMEDIATE", "DEFERRABLE", "INITIALLY", "DEFERRED",
     "IMMEDIATE", "INITIALLY", "DEFERRED", "IMMEDIATE", "INITIALLY", "DEFERRED",
     "IMMEDIATE", "INITIALLY", "DEFERRED", "IMMEDIATE", "INITIALLY", "DEFERRED",
-    "IMMEDIATE", "INITIALLY", "DEFERRED", "IMMEDIATE", "INITIALLY", "DEFERRED",
 }
 
 
@@ -168,19 +167,132 @@ def tokenize_sql(sql: str) -> List[Tuple[str, str]]:
     return tokens
 
 
+def extract_cte_table_names(sql: str) -> Set[str]:
+    """
+    从 SQL 中提取 WITH 子句定义的 CTE（Common Table Expression）表名
+    
+    这些是临时表，不是真正的中间表，不应该被识别为需要查找的中间表。
+    
+    WITH 子句的格式：
+    WITH cte1 AS (SELECT ...),
+         cte2 AS (SELECT ...)
+    SELECT * FROM cte1
+    """
+    tokens = tokenize_sql(sql)
+    cte_names = set()
+    
+    tokens_upper = [(t, v.upper() if t == 'IDENTIFIER' else v) for t, v in tokens]
+    
+    i = 0
+    while i < len(tokens_upper):
+        token_type, token_value = tokens_upper[i]
+        
+        if token_type == 'IDENTIFIER' and token_value == 'WITH':
+            j = i + 1
+            in_with_clause = True
+            
+            while j < len(tokens_upper) and in_with_clause:
+                j_type, j_value = tokens_upper[j]
+                
+                if j_type in ('WHITESPACE', 'COMMENT'):
+                    j += 1
+                    continue
+                
+                if j_type == 'IDENTIFIER' and j_value not in SQL_KEYWORDS:
+                    cte_name = tokens[j][1].lower()
+                    cte_names.add(cte_name)
+                    
+                    k = j + 1
+                    found_as = False
+                    found_open_paren = False
+                    paren_balance = 0
+                    
+                    while k < len(tokens_upper):
+                        k_type, k_value = tokens_upper[k]
+                        
+                        if k_type in ('WHITESPACE', 'COMMENT'):
+                            k += 1
+                            continue
+                        
+                        if k_type == 'IDENTIFIER' and k_value == 'AS' and not found_as:
+                            found_as = True
+                            k += 1
+                            continue
+                        
+                        if k_type == 'PUNCTUATION' and k_value == '(' and found_as and not found_open_paren:
+                            found_open_paren = True
+                            paren_balance = 1
+                            k += 1
+                            continue
+                        
+                        if found_open_paren and paren_balance > 0:
+                            if k_type == 'PUNCTUATION':
+                                if k_value == '(':
+                                    paren_balance += 1
+                                elif k_value == ')':
+                                    paren_balance -= 1
+                                    if paren_balance == 0:
+                                        k += 1
+                                        while k < len(tokens_upper):
+                                            next_type, next_value = tokens_upper[k]
+                                            if next_type in ('WHITESPACE', 'COMMENT'):
+                                                k += 1
+                                                continue
+                                            if next_type == 'PUNCTUATION' and next_value == ',':
+                                                j = k + 1
+                                                break
+                                            if next_type == 'IDENTIFIER' and next_value in {
+                                                'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'WITH'
+                                            }:
+                                                in_with_clause = False
+                                                j = k
+                                                break
+                                            j = k
+                                            in_with_clause = False
+                                            break
+                                        break
+                            k += 1
+                            continue
+                        
+                        break
+                    
+                    if paren_balance == 0 and found_open_paren:
+                        continue
+                    else:
+                        in_with_clause = False
+                        j = k
+                        continue
+                
+                if j_type == 'IDENTIFIER' and j_value in {
+                    'SELECT', 'INSERT', 'UPDATE', 'DELETE'
+                }:
+                    in_with_clause = False
+                    break
+                
+                j += 1
+        
+        i += 1
+    
+    return cte_names
+
+
 def extract_table_names_from_sql(sql: str) -> Set[str]:
     """
     从 SQL 中提取所有表名（包括 FROM 和 JOIN 子句后的表名）
+    排除 WITH 子句定义的 CTE 临时表
     
     识别逻辑：
-    1. FROM 关键字后的标识符
-    2. JOIN 关键字后的标识符（LEFT JOIN, RIGHT JOIN, INNER JOIN, FULL JOIN, OUTER JOIN 等）
+    1. 先识别 WITH 子句中的 CTE 表名
+    2. 再识别 FROM/JOIN 后的表名
+    3. 排除 CTE 表名
     """
+    cte_names = extract_cte_table_names(sql)
+    
     tokens = tokenize_sql(sql)
     
     table_names = set()
     
-    tokens = [(t, v.upper() if t == 'IDENTIFIER' else v) for t, v in tokens]
+    tokens_upper = [(t, v.upper() if t == 'IDENTIFIER' else v) for t, v in tokens]
     
     table_context_keywords = {
         'FROM',
@@ -195,43 +307,46 @@ def extract_table_names_from_sql(sql: str) -> Set[str]:
     }
     
     i = 0
-    while i < len(tokens):
-        token_type, token_value = tokens[i]
+    while i < len(tokens_upper):
+        token_type, token_value = tokens_upper[i]
         
         if token_type == 'IDENTIFIER' and token_value in table_context_keywords:
             context_keywords = []
             j = i
-            while j < len(tokens) and tokens[j][0] == 'IDENTIFIER' and tokens[j][1] in table_context_keywords:
-                context_keywords.append(tokens[j][1])
+            while j < len(tokens_upper) and tokens_upper[j][0] == 'IDENTIFIER' and tokens_upper[j][1] in table_context_keywords:
+                context_keywords.append(tokens_upper[j][1])
                 j += 1
             
             if 'FROM' in context_keywords or 'JOIN' in context_keywords:
-                while j < len(tokens):
-                    next_type, next_value = tokens[j]
+                while j < len(tokens_upper):
+                    next_type, next_value = tokens_upper[j]
                     
-                    if next_type == 'WHITESPACE':
+                    if next_type == 'WHITESPACE' or next_type == 'COMMENT':
                         j += 1
                         continue
                     
-                    if next_type == 'IDENTIFIER' and next_value.upper() not in SQL_KEYWORDS:
-                        table_names.add(next_value.lower())
+                    if next_type == 'IDENTIFIER' and next_value not in SQL_KEYWORDS:
+                        table_name_lower = tokens[j][1].lower()
+                        
+                        if table_name_lower not in cte_names:
+                            table_names.add(table_name_lower)
                         
                         k = j + 1
-                        while k < len(tokens):
-                            k_type, k_value = tokens[k]
-                            if k_type == 'WHITESPACE':
+                        while k < len(tokens_upper):
+                            k_type, k_value = tokens_upper[k]
+                            if k_type == 'WHITESPACE' or k_type == 'COMMENT':
                                 k += 1
                                 continue
-                            if k_type == 'IDENTIFIER' and k_value.upper() == 'AS':
+                            if k_type == 'IDENTIFIER' and k_value == 'AS':
                                 k += 1
-                                while k < len(tokens) and tokens[k][0] == 'WHITESPACE':
+                                while k < len(tokens_upper) and tokens_upper[k][0] in ('WHITESPACE', 'COMMENT'):
                                     k += 1
                                 break
-                            if k_type == 'IDENTIFIER' and k_value.upper() not in SQL_KEYWORDS:
+                            if k_type == 'IDENTIFIER' and k_value not in SQL_KEYWORDS:
                                 break
                             if k_type == 'PUNCTUATION' and k_value in (',', ')', ';', '('):
                                 break
-                            if k_type == 'IDENTIFIER' and k_value.upper() in {'ON', 'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'UNION', 'HAVING', 'WITH'}:
+                            if k_type == 'IDENTIFIER' and k_value in {'ON', 'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'UNION', 'HAVING', 'WITH'}:
                                 break
                             k += 1
                         break
@@ -239,7 +354,7 @@ def extract_table_names_from_sql(sql: str) -> Set[str]:
                     if next_type == 'PUNCTUATION' and next_value == '(':
                         break
                     
-                    if next_type == 'IDENTIFIER' and next_value.upper() in {'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'UNION', 'HAVING', 'WITH', 'ON'}:
+                    if next_type == 'IDENTIFIER' and next_value in {'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'UNION', 'HAVING', 'WITH', 'ON'}:
                         break
                     
                     break
@@ -254,7 +369,10 @@ def extract_table_names_from_sql(sql: str) -> Set[str]:
 def extract_table_names_simple(sql: str) -> Set[str]:
     """
     简化版的表名提取，用于快速识别
+    排除 WITH 子句定义的 CTE 临时表
     """
+    cte_names = extract_cte_table_names(sql)
+    
     table_names = set()
     
     patterns = [
@@ -274,8 +392,10 @@ def extract_table_names_simple(sql: str) -> Set[str]:
         matches = re.finditer(pattern, sql_upper, re.IGNORECASE)
         for match in matches:
             table_name = match.group(1)
-            if table_name and not table_name.upper() in SQL_KEYWORDS:
-                table_names.add(table_name.lower())
+            if table_name:
+                table_name_lower = table_name.lower()
+                if table_name_lower not in cte_names and table_name.upper() not in SQL_KEYWORDS:
+                    table_names.add(table_name_lower)
     
     advanced_tables = extract_table_names_from_sql(sql)
     table_names.update(advanced_tables)
@@ -322,7 +442,7 @@ def process_visualization_script_import(
     处理可视化脚本导入
     
     步骤：
-    1. 从可视化脚本中提取中间表名
+    1. 从可视化脚本中提取中间表名（排除 CTE 临时表）
     2. 查找对应的中间表脚本
     3. 构建整合脚本
     4. 返回处理结果
@@ -332,9 +452,12 @@ def process_visualization_script_import(
         'intermediate_table_names': 'table1,table2',
         'integrated_script': '整合后的脚本',
         'found_tables': ['table1'],
-        'missing_tables': ['table2']
+        'missing_tables': ['table2'],
+        'cte_tables': ['data_new']  # CTE 临时表，已排除
     }
     """
+    cte_names = extract_cte_table_names(visualization_script)
+    
     table_names = extract_table_names_simple(visualization_script)
     
     found_tables = []
@@ -373,5 +496,6 @@ def process_visualization_script_import(
         'integrated_script': integrated_script,
         'found_tables': found_tables,
         'missing_tables': missing_tables,
-        'all_tables': list(table_names)
+        'all_tables': list(table_names),
+        'cte_tables': list(cte_names)
     }
