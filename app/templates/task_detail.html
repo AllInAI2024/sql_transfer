@@ -327,6 +327,32 @@ const scriptSearchState = {
     }
 };
 
+function openScriptModal(scriptId, scriptName) {
+    document.getElementById('modalScriptName').textContent = scriptName;
+    document.getElementById('scriptModalBody').innerHTML = '<div class="loading-state">加载中...</div>';
+    document.getElementById('scriptModalOverlay').style.display = 'flex';
+    
+    loadScriptDetail(scriptId);
+}
+
+function closeScriptModal() {
+    document.getElementById('scriptModalOverlay').style.display = 'none';
+    resetAllSearchState();
+}
+
+function openDeleteModal(scriptId, scriptName) {
+    scriptToDeleteId = scriptId;
+    scriptToDeleteName = scriptName;
+    document.getElementById('deleteScriptName').textContent = scriptName;
+    document.getElementById('deleteModalOverlay').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModalOverlay').style.display = 'none';
+    scriptToDeleteId = null;
+    scriptToDeleteName = null;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const importScriptBtn = document.getElementById('importScriptBtn');
     const importModalOverlay = document.getElementById('importModalOverlay');
@@ -470,19 +496,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    function openScriptModal(scriptId, scriptName) {
-        document.getElementById('modalScriptName').textContent = scriptName;
-        document.getElementById('scriptModalBody').innerHTML = '<div class="loading-state">加载中...</div>';
-        scriptModalOverlay.style.display = 'flex';
-        
-        loadScriptDetail(scriptId);
-    }
-    
-    function closeScriptModal() {
-        scriptModalOverlay.style.display = 'none';
-        resetAllSearchState();
-    }
-    
     scriptModalClose.addEventListener('click', closeScriptModal);
     scriptModalCloseBtn.addEventListener('click', closeScriptModal);
     
@@ -491,19 +504,6 @@ document.addEventListener('DOMContentLoaded', function() {
             closeScriptModal();
         }
     });
-    
-    function openDeleteModal(scriptId, scriptName) {
-        scriptToDeleteId = scriptId;
-        scriptToDeleteName = scriptName;
-        document.getElementById('deleteScriptName').textContent = scriptName;
-        deleteModalOverlay.style.display = 'flex';
-    }
-    
-    function closeDeleteModal() {
-        deleteModalOverlay.style.display = 'none';
-        scriptToDeleteId = null;
-        scriptToDeleteName = null;
-    }
     
     deleteModalClose.addEventListener('click', closeDeleteModal);
     deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
