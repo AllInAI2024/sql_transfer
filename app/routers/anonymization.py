@@ -613,15 +613,24 @@ async def get_visualization_script_detail(script_id: int, db: Session = Depends(
     })
 
 
-@router_anonymization.post("/api/script/{script_id}/anonymize")
-async def anonymize_visualization_script(script_id: int, db: Session = Depends(get_db)):
-    script = db.query(VisualizationScript).filter(VisualizationScript.id == script_id).first()
+def _perform_anonymization(script: VisualizationScript, db: Session) -> Dict:
+    """
+    执行单个脚本的匿名化逻辑（可复用的核心方法）
     
-    if not script:
-        raise HTTPException(status_code=404, detail="可视化脚本不存在")
-    
+    Args:
+        script: VisualizationScript 实例
+        db: 数据库会话
+        
+    Returns:
+        Dict: 包含 success, message, data 或 error 信息
+    """
     if not script.integrated_script:
-        raise HTTPException(status_code=400, detail="整合脚本为空，无法进行匿名化")
+        return {
+            "success": False,
+            "script_id": script.id,
+            "script_name": script.name,
+            "error": "整合脚本为空，无法进行匿名化"
+        }
     
     try:
         exclude_list_str = settings.ANONYMIZATION_EXCLUDE_LIST
@@ -639,17 +648,128 @@ async def anonymize_visualization_script(script_id: int, db: Session = Depends(g
         script.anonymized_integrated_script = anonymized_sql
         script.anonymization_mapping = str(mapping)
         
-        db.commit()
+        return {
+            "success": True,
+            "script_id": script.id,
+            "script_name": script.name,
+            "anonymized_script": anonymized_sql,
+            "mapping": mapping
+        }
         
+    except Exception as e:
+        return {
+            "success": False,
+            "script_id": script.id,
+            "script_name": script.name,
+            "error": str(e)
+        }
+
+
+@router_anonymization.post("/api/script/{script_id}/anonymize")
+async def anonymize_visualization_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(VisualizationScript).filter(VisualizationScript.id == script_id).first()
+    
+    if not script:
+        raise HTTPException(status_code=404, detail="可视化脚本不存在")
+    
+    result = _perform_anonymization(script, db)
+    
+    if result["success"]:
+        db.commit()
         return JSONResponse(content={
             "success": True,
             "message": "匿名化完成",
             "data": {
-                "anonymized_script": anonymized_sql,
-                "mapping": mapping
+                "anonymized_script": result["anonymized_script"],
+                "mapping": result["mapping"]
             }
         })
-        
-    except Exception as e:
+    else:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"匿名化失败：{str(e)}")
+        raise HTTPException(status_code=400, detail=result["error"])
+
+
+@router_anonymization.post("/api/task/{task_id}/anonymize-all")
+async def anonymize_all_visualization_scripts(task_id: int, db: Session = Depends(get_db)):
+    """
+    批量匿名化指定任务下的所有可视化脚本
+    
+    逻辑：
+    1. 获取该任务下的所有可视化脚本
+    2. 过滤掉已经匿名化的脚本（anonymized_integrated_script 不为空）
+    3. 对每个未匿名化的脚本执行匿名化
+    4. 返回统计信息
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    scripts = db.query(VisualizationScript).filter(
+        VisualizationScript.task_id == task_id
+    ).order_by(VisualizationScript.id.asc()).all()
+    
+    if not scripts:
+        return JSONResponse(content={
+            "success": True,
+            "message": "该任务下没有可视化脚本",
+            "data": {
+                "total": 0,
+                "processed": 0,
+                "skipped": 0,
+                "failed": 0,
+                "results": []
+            }
+        })
+    
+    total_count = len(scripts)
+    skipped_count = 0
+    success_count = 0
+    failed_count = 0
+    results = []
+    
+    for script in scripts:
+        if script.anonymized_integrated_script:
+            skipped_count += 1
+            results.append({
+                "script_id": script.id,
+                "script_name": script.name,
+                "status": "skipped",
+                "message": "已经匿名化，跳过"
+            })
+            continue
+        
+        result = _perform_anonymization(script, db)
+        
+        if result["success"]:
+            success_count += 1
+            results.append({
+                "script_id": result["script_id"],
+                "script_name": result["script_name"],
+                "status": "success",
+                "message": "匿名化成功"
+            })
+        else:
+            failed_count += 1
+            results.append({
+                "script_id": result["script_id"],
+                "script_name": result["script_name"],
+                "status": "failed",
+                "message": result["error"]
+            })
+    
+    db.commit()
+    
+    message = f"批量匿名化完成：共 {total_count} 个，成功 {success_count} 个，跳过 {skipped_count} 个，失败 {failed_count} 个"
+    
+    return JSONResponse(content={
+        "success": True,
+        "message": message,
+        "data": {
+            "total": total_count,
+            "processed": success_count,
+            "skipped": skipped_count,
+            "failed": failed_count,
+            "results": results
+        }
+    })

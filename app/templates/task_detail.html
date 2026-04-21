@@ -10,6 +10,9 @@
             <p>任务详情和可视化脚本管理</p>
         </div>
         <div class="header-right">
+            <button class="btn btn-secondary" id="anonymizeAllBtn">
+                <span>🔒</span> 批量匿名化
+            </button>
             <button class="btn btn-primary" id="importScriptBtn">
                 <span>📥</span> 导入可视化脚本
             </button>
@@ -354,6 +357,7 @@ function closeDeleteModal() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    const anonymizeAllBtn = document.getElementById('anonymizeAllBtn');
     const importScriptBtn = document.getElementById('importScriptBtn');
     const importModalOverlay = document.getElementById('importModalOverlay');
     const importModalClose = document.getElementById('importModalClose');
@@ -373,6 +377,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteModalClose = document.getElementById('deleteModalClose');
     const deleteModalCancelBtn = document.getElementById('deleteModalCancelBtn');
     const deleteModalConfirmBtn = document.getElementById('deleteModalConfirmBtn');
+    
+    anonymizeAllBtn.addEventListener('click', async function() {
+        if (!confirm('确定要批量匿名化该任务下的所有未匿名化脚本吗？\n\n已经匿名化的脚本将被跳过。')) {
+            return;
+        }
+        
+        this.disabled = true;
+        const originalText = this.innerHTML;
+        this.innerHTML = '<span>⏳</span> 批量匿名化中...';
+        
+        try {
+            const response = await fetch(`/anonymization/api/task/${currentTaskId}/anonymize-all`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                showToast(result.message, 'success');
+                await loadScripts();
+            } else {
+                showToast(result.detail || result.message || '批量匿名化失败', 'error');
+            }
+        } catch (error) {
+            showToast('请求失败: ' + error.message, 'error');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = originalText;
+        }
+    });
     
     function openImportModal() {
         selectedFile = null;
